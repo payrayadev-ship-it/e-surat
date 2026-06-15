@@ -35,8 +35,10 @@ export interface LetterOut {
   letterDate: string;
   recipient: string;
   recipientInstitution: string;
+  recipientEmail?: string; // Target email for official dispatch
   subject: string;
   content: string;
+  category?: string; // e.g. "Undangan", "Penawaran", "Tugas", "Keputusan", "Pemberitahuan", "Lainnya"
   status: "Draft" | "Review" | "Approved Manager" | "Approved Direktur" | "Terkirim";
   signatureEnabled: boolean;
   signatureUrl?: string; // Base64 signature image

@@ -1,6 +1,8 @@
 import React, { useState } from "react";
-import { Plus, Search, FileText, Share2, CornerDownRight, Check, AlertTriangle, ArrowUpRight, UploadCloud, X, User } from "lucide-react";
+import { Plus, Search, FileText, Share2, CornerDownRight, Check, AlertTriangle, ArrowUpRight, UploadCloud, X, User, Sparkles, RefreshCw } from "lucide-react";
 import { LetterIn, UserRole, Disposition, UserProfile } from "../types";
+import { collection, addDoc } from "firebase/firestore";
+import { db, auth } from "../firebase";
 
 interface SuratMasukProps {
   letters: LetterIn[];
@@ -45,6 +47,104 @@ export default function SuratMasuk({
 
   // Drag over state for attachments
   const [isDragging, setIsDragging] = useState(false);
+
+  // AI Smart Assistant states
+  const [aiStatus, setAiStatus] = useState<"IDLE" | "LOADING" | "ERROR">("IDLE");
+  const [aiOutput, setAiOutput] = useState<string>("");
+  const [aiActionName, setAiActionName] = useState<string>("");
+
+  const runAiAction = async (actionType: "RINGKASAN" | "BALASAN" | "DISPOSISI" | "PDF", letter: LetterIn) => {
+    setAiStatus("LOADING");
+    setAiOutput("");
+    
+    let titleMsg = "";
+    let promptToSend = "";
+    
+    if (actionType === "RINGKASAN") {
+      titleMsg = "Ringkasan Eksekutif";
+      promptToSend = `Tolong bantu saya meringkas perihal surat masuk berikut ini secara profesional dan padat dalam Bahasa Indonesia: "${letter.subject}". Surat dikirimkan oleh ${letter.sender} dari instansi ${letter.senderInstitution} berkategori ${letter.category}. Sifat surat: ${letter.urgency}. Sediakan daftar poin penting dan berikan nada formal.`;
+    } else if (actionType === "BALASAN") {
+      titleMsg = "Draf Balasan Surat Resmi";
+      promptToSend = `Tolong bantu saya menyusun draf balasan formal atas surat masuk dengan subjek "${letter.subject}" dari ${letter.sender} (${letter.senderInstitution}). Format draf tanggapan dalam surat balasan perusahaan "PT FORSDIG TEKNOLOGI INDONESIA" secara sopan, lugas, dan rapi menggunakan Bahasa Indonesia baku.`;
+    } else if (actionType === "DISPOSISI") {
+      titleMsg = "Rekomendasi Petunjuk Disposisi";
+      promptToSend = `Tolong buatkan rekomendasi instruksi atau perintah disposisi yang tepat dari Direksi/Pimpinan untuk diturunkan ke staff operasional atas surat masuk bertema: "${letter.subject}" yang dikirim oleh ${letter.sender}. Berikan 3 poin petunjuk taktis yang jelas.`;
+    } else if (actionType === "PDF") {
+      titleMsg = "Analisis Kepatuhan Berkas Lampiran PDF";
+      promptToSend = `Tolong lakukan analisis kepatuhan (legal & business check) dari berkas lampiran simulasi bernama "${letter.attachmentName || "Lampiran_Dokumen.pdf"}" yang dilampirkan pada surat perihal: "${letter.subject}". Ulas keabsahan administratif dan sebutkan potensi risiko operasional secara singkat.`;
+    }
+
+    setAiActionName(titleMsg);
+
+    try {
+      const res = await fetch("/api/gemini/generate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ prompt: promptToSend, mode: "text" })
+      });
+
+      if (!res.ok) {
+        throw new Error(`HTTP error ${res.status}`);
+      }
+
+      const contentType = res.headers.get("content-type");
+      if (!contentType || !contentType.includes("application/json")) {
+        throw new Error("Response is not JSON format (404 Not Found error from Vercel Serverless)");
+      }
+
+      const data = await res.json();
+      
+      if (!data.success) {
+        throw new Error(data.error || "Gagal menghasilkan hasil AI");
+      }
+
+      const responseText = data.text || "OK";
+      setAiOutput(responseText);
+      setAiStatus("IDLE");
+
+      // Write trace doc to Firestore ai_logs
+      const logPayload = {
+        userId: auth.currentUser?.uid || "admin_demo",
+        prompt: `Action ${actionType} on letter sequence: ${letter.letterNumber}`,
+        response: responseText.substring(0, 1500),
+        status: "SUCCESS",
+        createdAt: new Date().toISOString()
+      };
+
+      try {
+        await addDoc(collection(db, "ai_logs"), logPayload);
+      } catch (dbErr) {
+        // Save locally if Firestore auth error or rules block
+        const currentLogs = JSON.parse(localStorage.getItem("local_ai_logs") || "[]");
+        currentLogs.unshift({ id: `local_${Date.now()}`, ...logPayload });
+        localStorage.setItem("local_ai_logs", JSON.stringify(currentLogs.slice(0, 50)));
+      }
+
+    } catch (err: any) {
+      console.error("AI Smart Action failed: ", err);
+      setAiStatus("ERROR");
+      
+      const errMsg = `Kesalahan: Gagal menghubungkan ke modul integrasi AI. Layanan AI sedang tidak tersedia. Silakan coba beberapa saat lagi. (${err.message || "Timeout"})`;
+      setAiOutput(errMsg);
+
+      // Write error log
+      const logPayload = {
+        userId: auth.currentUser?.uid || "admin_demo",
+        prompt: `Action ${actionType} on letter sequence: ${letter.letterNumber}`,
+        response: err.message || "Endpoint error response",
+        status: "FAILED",
+        createdAt: new Date().toISOString()
+      };
+
+      try {
+        await addDoc(collection(db, "ai_logs"), logPayload);
+      } catch (dbErr) {
+        const currentLogs = JSON.parse(localStorage.getItem("local_ai_logs") || "[]");
+        currentLogs.unshift({ id: `local_${Date.now()}`, ...logPayload });
+        localStorage.setItem("local_ai_logs", JSON.stringify(currentLogs.slice(0, 50)));
+      }
+    }
+  };
 
   // Filters
   const filteredLetters = letters.filter(l => {
@@ -329,6 +429,83 @@ export default function SuratMasuk({
                 <div>
                   <span className="text-[10px] uppercase font-mono tracking-wider text-slate-400 block mb-0.5">Perihal</span>
                   <p className="font-semibold text-slate-800 dark:text-slate-200 text-xs bg-slate-50 dark:bg-slate-950 p-2.5 rounded-lg border border-slate-150 dark:border-slate-800">{selectedLetter.subject}</p>
+                </div>
+
+                {/* AI Kantor Pintar Section */}
+                <div className="bg-indigo-50/40 dark:bg-slate-950/40 p-3 rounded-lg border border-indigo-100/50 dark:border-indigo-900/30 text-xs space-y-2">
+                  <div className="flex items-center justify-between">
+                    <span className="text-[10px] uppercase font-mono tracking-wider text-indigo-600 dark:text-indigo-400 font-bold flex items-center space-x-1">
+                      <Sparkles className="h-3 w-3 animate-pulse" />
+                      <span>AI Kantor Pintar (Gemini)</span>
+                    </span>
+                    {aiStatus === "LOADING" && (
+                      <RefreshCw className="h-3.5 w-3.5 text-indigo-500 animate-spin" />
+                    )}
+                  </div>
+                  
+                  <div className="flex flex-wrap gap-1.5 pt-1">
+                    <button
+                      type="button"
+                      disabled={aiStatus === "LOADING"}
+                      onClick={() => runAiAction("RINGKASAN", selectedLetter)}
+                      className="bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 text-white font-semibold py-1 px-2.5 rounded-md text-[10px] transition-all cursor-pointer flex items-center space-x-0.5"
+                    >
+                      Ringkas
+                    </button>
+                    
+                    <button
+                      type="button"
+                      disabled={aiStatus === "LOADING"}
+                      onClick={() => runAiAction("BALASAN", selectedLetter)}
+                      className="bg-amber-600 hover:bg-amber-700 disabled:opacity-50 text-white font-semibold py-1 px-2.5 rounded-md text-[10px] transition-all cursor-pointer"
+                    >
+                      Draf Balasan
+                    </button>
+                    
+                    <button
+                      type="button"
+                      disabled={aiStatus === "LOADING"}
+                      onClick={() => runAiAction("DISPOSISI", selectedLetter)}
+                      className="bg-purple-600 hover:bg-purple-700 disabled:opacity-50 text-white font-semibold py-1 px-2.5 rounded-md text-[10px] transition-all cursor-pointer"
+                    >
+                      Oto-Disposisi
+                    </button>
+
+                    {selectedLetter.attachmentName && (
+                      <button
+                        type="button"
+                        disabled={aiStatus === "LOADING"}
+                        onClick={() => runAiAction("PDF", selectedLetter)}
+                        className="bg-teal-600 hover:bg-teal-700 disabled:opacity-50 text-white font-semibold py-1 px-2.5 rounded-md text-[10px] transition-all cursor-pointer"
+                      >
+                        Analisis PDF
+                      </button>
+                    )}
+                  </div>
+
+                  {aiOutput && (
+                    <div className="mt-2 p-2.5 bg-white dark:bg-slate-900 border border-indigo-100/40 dark:border-indigo-900/40 rounded-md animate-in fade-in duration-250">
+                      <span className="text-[9px] uppercase font-mono font-bold text-indigo-600 dark:text-indigo-400 block border-b border-slate-100 dark:border-slate-800 pb-1 mb-1">
+                        {aiActionName}
+                      </span>
+                      <p className="text-[11px] leading-relaxed select-all text-slate-700 dark:text-slate-300 font-sans whitespace-pre-wrap">
+                        {aiOutput}
+                      </p>
+                      
+                      {aiActionName === "Rekomendasi Petunjuk Disposisi" && aiStatus === "IDLE" && (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setDispNotes(aiOutput);
+                            setIsDispOpen(true);
+                          }}
+                          className="mt-2 text-[9px] font-bold text-indigo-600 dark:text-indigo-400 flex items-center space-x-1 hover:underline cursor-pointer"
+                        >
+                          <span>✓ Terapkan Catatan Ini ke Lembaran Disposisi</span>
+                        </button>
+                      )}
+                    </div>
+                  )}
                 </div>
 
                 {selectedLetter.attachmentName && (

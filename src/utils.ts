@@ -68,13 +68,54 @@ export function generateVerificationQR(code: string, width = 120, height = 120):
  * Automates corporate registration numbers.
  * Format e.g., SPD/2026/06/0001
  */
-export function generateLetterNumber(index: number, setting: CompanySetting): string {
+export function generateLetterNumber(index: number, setting: CompanySetting, category?: string): string {
   const date = new Date();
   const year = date.getFullYear();
   const month = String(date.getMonth() + 1).padStart(2, "0");
   const sequential = String(index + 1).padStart(4, "0");
 
-  let format = setting.letterNumberFormat || "SPD/YYYY/MM/[SEQ]";
+  let prefix = "FORSDIG"; // default company fallback
+  if (setting.companyName && setting.companyName.includes("FORSDIG")) {
+    prefix = "FORSDIG";
+  } else if (setting.companyName) {
+    const words = setting.companyName.replace(/^(PT|CV)\s+/i, "").split(/\s+/);
+    if (words.length > 0) {
+      prefix = words.map(w => w[0]).join("").toUpperCase();
+    }
+  }
+
+  // Choose subcode based on category/type
+  let subCode = "KOR"; // default korespondensi
+  const catLower = (category || "").toLowerCase();
+  if (catLower.includes("undangan") || catLower === "tpl_undangan") {
+    subCode = "UND";
+  } else if (catLower.includes("penawaran") || catLower === "tpl_penawaran") {
+    subCode = "PNW";
+  } else if (catLower.includes("tugas") || catLower === "tpl_tugas" || catLower.includes("perintah")) {
+    subCode = "TGS";
+  } else if (catLower.includes("keputusan") || catLower === "sk") {
+    subCode = "SK";
+  } else if (catLower.includes("pemberitahuan") || catLower === "pbt") {
+    subCode = "PBT";
+  } else if (catLower.includes("pengumuman") || catLower === "pgm") {
+    subCode = "PGM";
+  } else if (catLower.includes("memo")) {
+    subCode = "MEMO";
+  }
+
+  // Standard Indonesian style format: PREFIX/SUBCODE/YYYY/MM/[SEQ]
+  // e.g., FORSDIG/UND/2026/06/0001
+  let format = setting.letterNumberFormat || "PREFIX/SUBCODE/YYYY/MM/[SEQ]";
+  
+  if (format.includes("FORSDIG") || format.includes("SPD") || format.includes("PREFIX")) {
+    format = format
+      .replace("FORSDIG", `FORSDIG/${subCode}`)
+      .replace("SPD", `SPD/${subCode}`)
+      .replace("PREFIX", `${prefix}/${subCode}`);
+  } else {
+    format = `${prefix}/${subCode}/${format}`;
+  }
+
   return format
     .replace("YYYY", String(year))
     .replace("MM", month)

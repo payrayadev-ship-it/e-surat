@@ -1,6 +1,8 @@
-import React, { useState } from "react";
-import { Settings, Shield, Key, Mail, RefreshCw, Layers, Edit3, Trash, UserCheck, Smartphone } from "lucide-react";
+import React, { useState, useEffect } from "react";
+import { Settings, Shield, Key, Mail, RefreshCw, Layers, Edit3, Trash, UserCheck, Smartphone, Sparkles, AlertTriangle, ShieldAlert, CheckCircle, Database } from "lucide-react";
 import { CompanySetting, AuditLog, UserRole, UserProfile } from "../types";
+import { collection, getDocs, addDoc, query, orderBy, limit } from "firebase/firestore";
+import { db, auth } from "../firebase";
 
 interface SettingsAuditProps {
   companySetting: CompanySetting;
@@ -19,7 +21,7 @@ export default function SettingsAudit({
   onUpdateCompany,
   onClearAuditLogs
 }: SettingsAuditProps) {
-  const [activeTab, setActiveTab] = useState<"general" | "smtp" | "audit" | "users">("general");
+  const [activeTab, setActiveTab] = useState<"general" | "smtp" | "audit" | "users" | "ai_gemini">("general");
 
   // Form states - Company metadata
   const [companyName, setCompanyName] = useState(companySetting.companyName);
@@ -32,6 +34,153 @@ export default function SettingsAudit({
   const [smtpHost, setSmtpHost] = useState(companySetting.smtpHost || "smtp.gmail.com");
   const [smtpPort, setSmtpPort] = useState(companySetting.smtpPort || 587);
   const [smtpUser, setSmtpUser] = useState(companySetting.smtpUser || "office@forsdig-office.co.id");
+
+  // AI Gemini states
+  const [apiStatus, setApiStatus] = useState<"CONNECTED" | "FAILED" | "NOT_TESTED">("NOT_TESTED");
+  const [envStatus, setEnvStatus] = useState<"ACTIVE" | "INACTIVE">("INACTIVE");
+  const [requestToday, setRequestToday] = useState<number>(0);
+  const [errorToday, setErrorToday] = useState<number>(0);
+  const [testingConnection, setTestingConnection] = useState<boolean>(false);
+  const [testResult, setTestResult] = useState<{ success: boolean; title: string; message: string } | null>(null);
+  const [aiLogsList, setAiLogsList] = useState<any[]>([]);
+
+  const fetchAiLogs = async () => {
+    try {
+      const q = query(collection(db, "ai_logs"), orderBy("createdAt", "desc"), limit(25));
+      const snapshot = await getDocs(q);
+      const logs: any[] = [];
+      let successCount = 0;
+      let failCount = 0;
+      
+      snapshot.forEach((doc) => {
+        const d = doc.data();
+        logs.push({ id: doc.id, ...d });
+        if (d.status === "SUCCESS") {
+          successCount++;
+        } else if (d.status === "FAILED") {
+          failCount++;
+        }
+      });
+      
+      setAiLogsList(logs);
+      setRequestToday(successCount);
+      setErrorToday(failCount);
+    } catch (err) {
+      console.warn("Failed to fetch ai_logs, either unauthorized or db not set up yet:", err);
+      const localLogsRaw = localStorage.getItem("local_ai_logs");
+      if (localLogsRaw) {
+        const parsed = JSON.parse(localLogsRaw);
+        setAiLogsList(parsed);
+        const success = parsed.filter((l: any) => l.status === "SUCCESS").length;
+        const failed = parsed.filter((l: any) => l.status === "FAILED").length;
+        setRequestToday(success);
+        setErrorToday(failed);
+      }
+    }
+  };
+
+  useEffect(() => {
+    if (activeTab === "ai_gemini") {
+      fetchAiLogs();
+    }
+  }, [activeTab]);
+
+  const testGeminiConnection = async () => {
+    setTestingConnection(true);
+    setTestResult(null);
+    try {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 15000);
+      
+      const res = await fetch("/api/gemini/generate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ prompt: "Testing modern office AI API connection response. Please answer with 'OK'.", mode: "text" }),
+        signal: controller.signal
+      });
+      
+      clearTimeout(timeoutId);
+      
+      if (!res.ok) {
+        throw new Error(`Endpoint HTTP Error code: ${res.status}`);
+      }
+      
+      const contentType = res.headers.get("content-type");
+      if (!contentType || !contentType.includes("application/json")) {
+        throw new Error("Response is not valid JSON (Returned HTML 404 or other format)");
+      }
+      
+      const data = await res.json();
+      const useRealKey = !data.fallback;
+      
+      setApiStatus("CONNECTED");
+      setEnvStatus(useRealKey ? "ACTIVE" : "INACTIVE");
+      
+      const resText = data.text || "OK";
+      
+      setTestResult({
+        success: true,
+        title: "Koneksi Berhasil!",
+        message: `Status: CONNECTED\nModel: gemini-3.5-flash\nKunci API Riil: ${useRealKey ? "AKTIF" : "OFFLINE FALLBACK"}\nRespon AI: "${resText}"`
+      });
+      
+      const newLogPayload = {
+        userId: auth.currentUser?.uid || "admin_demo",
+        prompt: "API connection test query verified",
+        response: resText,
+        status: "SUCCESS",
+        createdAt: new Date().toISOString()
+      };
+      
+      try {
+        await addDoc(collection(db, "ai_logs"), newLogPayload);
+      } catch (err) {
+        console.warn("Could not save log directly to Firestore. Saving locally.");
+        const currentLogs = JSON.parse(localStorage.getItem("local_ai_logs") || "[]");
+        currentLogs.unshift({ id: `local_${Date.now()}`, ...newLogPayload });
+        localStorage.setItem("local_ai_logs", JSON.stringify(currentLogs.slice(0, 50)));
+      }
+      
+      fetchAiLogs();
+      
+    } catch (err: any) {
+      console.error("Test connection aborted or failed:", err);
+      
+      setApiStatus("FAILED");
+      setEnvStatus("INACTIVE");
+      
+      const isTimeout = err.name === "AbortError";
+      const userMessage = isTimeout 
+        ? "Sambungan terputus karena batas waktu (timeout). Silakan periksa jaringan internet Anda atau coba lagi." 
+        : `Kesalahan Endpoint API: ${err.message || "Gagal menghubungi modul integrasi AI."}\nLayanan AI sedang tidak tersedia.\nSilakan coba beberapa saat lagi.`;
+      
+      setTestResult({
+        success: false,
+        title: "Koneksi Gagal!",
+        message: userMessage
+      });
+      
+      const newLogPayload = {
+        userId: auth.currentUser?.uid || "admin_demo",
+        prompt: "API connection test query verified",
+        response: err.message || "Connection timeout or invalid response",
+        status: "FAILED",
+        createdAt: new Date().toISOString()
+      };
+      
+      try {
+        await addDoc(collection(db, "ai_logs"), newLogPayload);
+      } catch (dbErr) {
+        const currentLogs = JSON.parse(localStorage.getItem("local_ai_logs") || "[]");
+        currentLogs.unshift({ id: `local_${Date.now()}`, ...newLogPayload });
+        localStorage.setItem("local_ai_logs", JSON.stringify(currentLogs.slice(0, 50)));
+      }
+      
+      fetchAiLogs();
+    } finally {
+      setTestingConnection(false);
+    }
+  };
 
   const saveGeneralSettings = (e: React.FormEvent) => {
     e.preventDefault();
@@ -108,6 +257,17 @@ export default function SettingsAudit({
           >
             <Shield className="h-4 w-4" />
             <span>Audit Trail & Security</span>
+          </button>
+
+          <button 
+            onClick={() => setActiveTab("ai_gemini")}
+            className={`w-full flex items-center space-x-2 p-2.5 rounded-lg text-xs font-semibold text-left transition-all ${
+              activeTab === "ai_gemini" ? "bg-blue-600 text-white shadow-sm" : "text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800"
+            }`}
+            id="tab-settings-ai"
+          >
+            <Sparkles className="h-4 w-4 text-indigo-500" />
+            <span>AI Gemini Dashboard</span>
           </button>
         </div>
 
@@ -339,6 +499,158 @@ export default function SettingsAudit({
                   )}
                 </tbody>
               </table>
+            </div>
+          </div>
+        )}
+
+        {activeTab === "ai_gemini" && (
+          <div className="space-y-6 animate-in fade-in duration-200" id="ai-gemini-panel">
+            <h3 className="text-base font-bold text-slate-805 dark:text-white border-b border-slate-100 dark:border-slate-800 pb-2 flex items-center space-x-2">
+              <Sparkles className="h-5 w-5 text-indigo-500" />
+              <span>Pusat Kendali & Pengaturan AI Gemini</span>
+            </h3>
+            <p className="text-xs text-slate-450 dark:text-slate-500">
+              Pantau kredensial, performa, dan kemajuan proses otomasi dokumen AI di lingkungan produksi Vercel.
+            </p>
+
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+              <div className="bg-slate-50 dark:bg-slate-950 p-4 rounded-xl border border-slate-150 dark:border-slate-850">
+                <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider font-mono">Status API & Endpoint</span>
+                <div className="flex items-center space-x-2 mt-2">
+                  <span className={`h-2.5 w-2.5 rounded-full ${apiStatus === "CONNECTED" ? "bg-emerald-500 animate-pulse" : apiStatus === "NOT_TESTED" ? "bg-amber-400" : "bg-rose-500"}`} />
+                  <span className="text-sm font-bold text-slate-850 dark:text-slate-100">
+                    {apiStatus === "CONNECTED" ? "ONLINE" : apiStatus === "NOT_TESTED" ? "Siap Diuji" : "OFFLINE / ERROR"}
+                  </span>
+                </div>
+                <span className="text-[10px] text-slate-400 block mt-1">/api/gemini/generate</span>
+              </div>
+
+              <div className="bg-slate-50 dark:bg-slate-950 p-4 rounded-xl border border-slate-150 dark:border-slate-850">
+                <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider font-mono">Environment Secret</span>
+                <div className="flex items-center space-x-2 mt-2">
+                  <span className={`h-2.5 w-2.5 rounded-full ${envStatus === "ACTIVE" ? "bg-emerald-500" : "bg-teal-500"}`} />
+                  <span className="text-sm font-bold text-slate-850 dark:text-slate-100">
+                    {envStatus === "ACTIVE" ? "GEMINI_API_KEY Aktif" : "Mode Demo/Fallback"}
+                  </span>
+                </div>
+                <span className="text-[10px] text-slate-400 block mt-1">Konfigurasi Key Vercel</span>
+              </div>
+
+              <div className="bg-slate-50 dark:bg-slate-950 p-4 rounded-xl border border-slate-150 dark:border-slate-850">
+                <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider font-mono">Model Aktif Utama</span>
+                <div className="mt-2">
+                  <span className="text-sm font-bold text-indigo-600 dark:text-indigo-400 font-mono">gemini-3.5-flash</span>
+                </div>
+                <span className="text-[10px] text-slate-400 block mt-1">Basic Text & Structured Content</span>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div className="bg-blue-50/40 dark:bg-blue-950/20 p-4 rounded-xl border border-blue-100/50 dark:border-blue-900/40 text-xs flex justify-between items-center">
+                <div>
+                  <span className="font-bold text-blue-800 dark:text-blue-300 block">Jumlah Request Berhasil</span>
+                  <span className="text-[10px] text-blue-600 dark:text-blue-400">Total interaksi sukses AI</span>
+                </div>
+                <span className="text-2xl font-black text-blue-700 dark:text-blue-200">{requestToday}</span>
+              </div>
+
+              <div className="bg-rose-50/40 dark:bg-rose-950/20 p-4 rounded-xl border border-rose-100/50 dark:border-rose-900/40 text-xs flex justify-between items-center">
+                <div>
+                  <span className="font-bold text-rose-800 dark:text-rose-300 block">Jumlah Error Rekaman</span>
+                  <span className="text-[10px] text-rose-600 dark:text-rose-400">Gagal / Timeout / Masalah Key</span>
+                </div>
+                <span className="text-2xl font-black text-rose-700 dark:text-rose-200">{errorToday}</span>
+              </div>
+            </div>
+
+            <div className="p-4 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-850 rounded-xl flex flex-col md:flex-row md:items-center justify-between text-xs space-y-3 md:space-y-0">
+              <div>
+                <span className="font-bold text-slate-805 dark:text-slate-100 block">Uji Konektivitas Keamanan API</span>
+                <p className="text-slate-500 mt-0.5">Kirimkan draf request kecil ke Vercel Serverless Function untuk mentes jembatan respon.</p>
+              </div>
+              <button
+                type="button"
+                onClick={testGeminiConnection}
+                disabled={testingConnection}
+                className="bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 text-white font-bold py-2 px-5 rounded-lg shadow-sm transition-all shrink-0 flex items-center space-x-1.5 cursor-pointer"
+              >
+                {testingConnection ? (
+                  <>
+                    <RefreshCw className="h-3.5 w-3.5 animate-spin" />
+                    <span>Mentransmisi...</span>
+                  </>
+                ) : (
+                  <>
+                    <Sparkles className="h-3.5 w-3.5" />
+                    <span>Test Gemini Connection</span>
+                  </>
+                )}
+              </button>
+            </div>
+
+            {testResult && (
+              <div className={`p-4 rounded-xl border text-xs leading-relaxed flex items-start space-x-2.5 animate-in fade-in duration-200 ${
+                testResult.success 
+                  ? "bg-emerald-50 dark:bg-emerald-950/20 border-emerald-100 dark:border-emerald-900/30 text-emerald-800 dark:text-emerald-300"
+                  : "bg-rose-50 dark:bg-rose-950/20 border-rose-100 dark:border-rose-900/30 text-rose-800 dark:text-rose-300"
+              }`}>
+                {testResult.success ? (
+                  <CheckCircle className="h-5 w-5 text-emerald-500 shrink-0 mt-0.5" />
+                ) : (
+                  <ShieldAlert className="h-5 w-5 text-rose-500 shrink-0 mt-0.5" />
+                )}
+                <div>
+                  <span className="font-bold block mb-1">{testResult.title}</span>
+                  <pre className="text-[11px] select-all font-mono leading-relaxed bg-slate-100/50 dark:bg-slate-900/50 p-2.5 rounded border border-slate-200/50 dark:border-slate-800/50 mt-1 max-h-[140px] overflow-y-auto whitespace-pre-wrap">
+                    {testResult.message}
+                  </pre>
+                </div>
+              </div>
+            )}
+
+            <div className="space-y-2.5">
+              <span className="text-xs font-bold text-slate-700 dark:text-slate-350 block uppercase tracking-wider font-mono">Recent AI Query Monitoring (ai_logs)</span>
+              <div className="border border-slate-200 dark:border-slate-850 rounded-xl overflow-hidden text-xs max-h-[220px] overflow-y-auto">
+                <table className="w-full text-left border-collapse">
+                  <thead className="bg-slate-50 dark:bg-slate-950 text-slate-500 uppercase tracking-wider font-mono text-[9px] border-b border-slate-200 dark:border-slate-800">
+                    <tr>
+                      <th className="p-2.5 font-semibold">Waktu</th>
+                      <th className="p-2.5 font-semibold">Prompt</th>
+                      <th className="p-2.5 font-semibold">Respon Model</th>
+                      <th className="p-2.5 font-semibold">Status</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100 dark:divide-slate-850 font-sans">
+                    {aiLogsList.map((log) => (
+                      <tr key={log.id} className="hover:bg-slate-50/40 dark:hover:bg-slate-850/10">
+                        <td className="p-2.5 font-mono text-[10px] text-slate-400 shrink-0 whitespace-nowrap">
+                          {new Date(log.createdAt).toLocaleTimeString("id-ID")}
+                        </td>
+                        <td className="p-2.5 font-medium text-slate-600 dark:text-slate-300 max-w-[150px] truncate" title={log.prompt}>
+                          {log.prompt}
+                        </td>
+                        <td className="p-2.5 text-slate-500 max-w-[205px] truncate" title={log.response}>
+                          {log.response}
+                        </td>
+                        <td className="p-2.5 font-bold">
+                          <span className={`inline-block px-1.5 py-0.5 rounded text-[8.5px] uppercase font-mono border ${
+                            log.status === "SUCCESS"
+                              ? "bg-emerald-50 dark:bg-emerald-950/20 text-emerald-600 dark:text-emerald-400 border-emerald-100 dark:border-emerald-900/30"
+                              : "bg-rose-50 dark:bg-rose-950/20 text-rose-600 dark:text-rose-400 border-rose-100 dark:border-rose-900/30"
+                          }`}>
+                            {log.status}
+                          </span>
+                        </td>
+                      </tr>
+                    ))}
+                    {aiLogsList.length === 0 && (
+                      <tr>
+                        <td colSpan={4} className="text-center p-6 text-slate-400 italic">Belum ada aktivitas query AI terekam di database.</td>
+                      </tr>
+                    )}
+                  </tbody>
+                </table>
+              </div>
             </div>
           </div>
         )}

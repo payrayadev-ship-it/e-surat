@@ -59,5 +59,12 @@ service cloud.firestore {
       allow read: if isSignedIn();
       allow write: if isSignedIn();
     }
+
+    // --- AI Logs ---
+    match /ai_logs/{logId} {
+      allow read: if isSignedIn();
+      allow create: if isSignedIn();
+      allow update, delete: if false; // Logs are immutable
+    }
   }
 }

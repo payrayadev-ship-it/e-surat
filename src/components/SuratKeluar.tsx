@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from "react";
-import { Plus, Search, FileText, Bot, Send, Check, ShieldCheck, Signature, Sparkles, Printer, UserCheck, Eye, RefreshCw, X, Edit3 } from "lucide-react";
+import { Plus, Search, FileText, Bot, Send, Check, ShieldCheck, Signature, Sparkles, Printer, UserCheck, Eye, RefreshCw, X, Edit3, QrCode, Award, ShieldAlert, CheckCircle2 } from "lucide-react";
 import { LetterOut, UserRole, UserProfile, CompanySetting } from "../types";
 import { generateLetterNumber, injectTemplateVariables, generateVerificationQR } from "../utils";
 import { jsPDF } from "jspdf";
@@ -87,10 +87,12 @@ export default function SuratKeluar({
   const [isAddOpen, setIsAddOpen] = useState(false);
   const [recipientName, setRecipientName] = useState("");
   const [recipientInst, setRecipientInst] = useState("");
+  const [recipientEmail, setRecipientEmail] = useState("");
   const [subjectVal, setSubjectVal] = useState("");
   const [contentVal, setContentVal] = useState("");
   const [signatoryName, setSignatoryName] = useState("Ir. Joko Sutrisno, M.T.");
   const [selectedTpl, setSelectedTpl] = useState("");
+  const [letterCategory, setLetterCategory] = useState("Undangan");
 
   // AI Prompt Stage
   const [isAiPanelOpen, setIsAiPanelOpen] = useState(false);
@@ -108,6 +110,8 @@ export default function SuratKeluar({
   const [sigDataUrl, setSigDataUrl] = useState("");
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const [sigType, setSigType] = useState<"Canvas" | "QR">("Canvas");
+  const [isVerifyModalOpen, setIsVerifyModalOpen] = useState(false);
+  const [isEmailPreviewModalOpen, setIsEmailPreviewModalOpen] = useState(false);
 
   // Filter keys
   const filteredLetters = letters.filter(l => 
@@ -202,6 +206,13 @@ export default function SuratKeluar({
       if (found) {
         setSubjectVal(found.subject);
         setContentVal(found.content);
+        if (selectedTpl === "tpl_undangan") {
+          setLetterCategory("Undangan");
+        } else if (selectedTpl === "tpl_penawaran") {
+          setLetterCategory("Penawaran");
+        } else if (selectedTpl === "tpl_tugas") {
+          setLetterCategory("Tugas");
+        }
       }
     }
   }, [selectedTpl]);
@@ -273,7 +284,7 @@ export default function SuratKeluar({
 
     // Automatic sequence generation code
     const indexSeq = letters.length;
-    const letterNoAuto = generateLetterNumber(indexSeq, companySetting);
+    const letterNoAuto = generateLetterNumber(indexSeq, companySetting, letterCategory);
     const verificationCode = `DOC-${new Date().toISOString().replace(/[-:T]/g, "").substring(0, 8)}-${String(indexSeq + 1).padStart(3, "0")}`;
 
     onAddLetter({
@@ -281,8 +292,10 @@ export default function SuratKeluar({
       letterDate: new Date().toISOString().split("T")[0],
       recipient: recipientName,
       recipientInstitution: recipientInst || "PT Umum / Klien Resmi",
+      recipientEmail: recipientEmail || undefined,
       subject: subjectVal || "Surat Resmi Korespondensi",
       content: contentVal,
+      category: letterCategory,
       status: "Draft",
       signatureEnabled: sigType === "QR" || sigDataUrl !== "",
       signatureUrl: sigType === "QR" ? undefined : (sigDataUrl !== "" ? sigDataUrl : undefined),
@@ -295,9 +308,11 @@ export default function SuratKeluar({
     // Reset Form fields
     setRecipientName("");
     setRecipientInst("");
+    setRecipientEmail("");
     setSubjectVal("");
     setContentVal("");
     setSelectedTpl("");
+    setLetterCategory("Undangan");
     setSigDataUrl("");
     setSigType("Canvas");
     setIsAddOpen(false);
@@ -924,30 +939,51 @@ export default function SuratKeluar({
                     {(selectedLetter.status === "Approved Direktur" || (selectedLetter.status === "Approved Manager" && currentRole === "Super Admin")) && (
                       <button 
                         onClick={() => {
-                          onUpdateStatus(selectedLetter.id, "Terkirim", "Sent to recipient via automatic SMTP engine protocol.");
+                          onUpdateStatus(selectedLetter.id, "Terkirim", "Sent to recipient via Resend official correspondence channel.");
                           setSelectedLetter({...selectedLetter, status: "Terkirim"});
                           
-                          // Simulated SMTP triggers in background
+                          // Transmit email via Resend API
                           fetch("/api/email/send", {
                             method: "POST",
                             headers: { "Content-Type": "application/json" },
                             body: JSON.stringify({
-                              to: companySetting.companyEmail,
-                              subject: selectedLetter.subject,
+                              to: selectedLetter.recipientEmail || companySetting.companyEmail,
+                              subject: `[FGI OFFICE] - ${selectedLetter.subject}`,
                               body: selectedLetter.content,
-                              attachmentName: `Letter_${selectedLetter.verificationCode}.pdf`
+                              attachmentName: `Letter_${selectedLetter.verificationCode}.pdf`,
+                              letterData: {
+                                letterNumber: selectedLetter.letterNumber,
+                                letterDate: selectedLetter.letterDate,
+                                recipient: selectedLetter.recipient,
+                                recipientInstitution: selectedLetter.recipientInstitution,
+                                signatory: selectedLetter.signatory,
+                                verificationCode: selectedLetter.verificationCode,
+                                status: "Terkirim"
+                              }
                             })
                           }).then(res => res.json()).then(resp => {
                             if (resp.success) {
-                              alert(`Notifikasi Email SMTP Terkirim ke ${selectedLetter.recipient} (${resp.log?.smtpHost})`);
+                              const targetEmail = selectedLetter.recipientEmail || companySetting.companyEmail;
+                              const isSimulation = resp.deliveryMethod && resp.deliveryMethod.includes("SIMULATION");
+                              
+                              if (isSimulation) {
+                                alert(`[Mode Simulasi] Email surat keluar "${selectedLetter.subject}" disimulasikan siap kirim ke ${targetEmail}.\n\n(Tip: Isi 'RESEND_API_KEY' di secrets untuk pengiriman nyata!)`);
+                              } else {
+                                alert(`[Resend Sukses] Surat resmi "${selectedLetter.subject}" berhasil dikirimkan ke alamat ${targetEmail} menggunakan provider Resend!`);
+                              }
+                            } else {
+                              alert(`Gagal mengirim email: ${resp.error || 'Server error'}`);
                             }
+                          }).catch(err => {
+                            console.error(err);
+                            alert("Terjadi kegagalan koneksi saat menghubungi server pengiriman.");
                           });
                         }}
                         className="flex-1 md:flex-none flex items-center justify-center space-x-1.5 bg-emerald-600 hover:bg-emerald-700 text-white font-semibold py-1.5 px-4 rounded text-xs transition-all animate-bounce"
                         id="btn-dispatch-terkirim"
                       >
                         <Send className="h-3 w-3" />
-                        <span>Kirim Surat PDF (SMTP)</span>
+                        <span>Kirim Surat Resmi (Resend)</span>
                       </button>
                     )}
 
@@ -961,18 +997,118 @@ export default function SuratKeluar({
                       <span>Cetak KOP</span>
                     </button>
 
+                    {/* REVIEW EMAIL TEMPLATE */}
+                    <button 
+                      onClick={() => setIsEmailPreviewModalOpen(true)}
+                      className="flex-1 md:flex-none flex items-center justify-center space-x-1.5 border border-indigo-300 dark:border-indigo-800 text-indigo-700 dark:text-indigo-400 hover:bg-indigo-50/50 dark:hover:bg-indigo-950/20 font-bold py-1.5 px-3 rounded text-xs transition-all cursor-pointer"
+                      id="btn-review-email"
+                    >
+                      <Eye className="h-3.5 w-3.5" />
+                      <span>Review Email</span>
+                    </button>
+
                     {/* EXPORT TO PDF */}
                     <button 
                       onClick={() => handleExportPDF(selectedLetter)}
                       className="flex-1 md:flex-none flex items-center justify-center space-x-1.5 bg-blue-600 hover:bg-blue-700 text-white font-bold py-1.5 px-3.5 rounded text-xs transition-all cursor-pointer"
-                      id="btn-ekspor-pdf"
+                      id="btn-unduh-pdf"
                     >
                       <FileText className="h-3 w-3" />
-                      <span>Ekspor PDF</span>
+                      <span>Unduh PDF</span>
                     </button>
                   </div>
                 </div>
               )}
+
+              {/* QR Code Security Verification & TTE Status Panel */}
+              <div 
+                className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-5 shadow-sm space-y-4"
+                id="qr-verification-panel"
+              >
+                <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
+                  <div className="flex items-center space-x-3">
+                    <div className="p-2.5 bg-blue-50 dark:bg-blue-950/40 text-blue-600 dark:text-blue-450 rounded-lg shrink-0 border border-blue-100 dark:border-blue-900/40">
+                      <QrCode className="h-5 w-5" />
+                    </div>
+                    <div>
+                      <h4 className="font-bold text-slate-800 dark:text-white text-xs sm:text-sm">QR Code Verifikasi & TTE Keaslian</h4>
+                      <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">Kode QR aman terenkripsi memuat ID & status penandatanganan resmi.</p>
+                    </div>
+                  </div>
+
+                  <span className={`px-2.5 py-1 rounded text-[10px] font-bold uppercase tracking-wider border ${
+                    selectedLetter.status === "Approved Direktur" || selectedLetter.status === "Terkirim"
+                      ? "bg-emerald-50 text-emerald-700 border-emerald-100 dark:bg-emerald-950/20 dark:text-emerald-400 dark:border-emerald-900/40"
+                      : "bg-amber-50 text-amber-700 border-amber-100 dark:bg-amber-950/20 dark:text-amber-400 dark:border-amber-900/40"
+                  }`}>
+                    {selectedLetter.status === "Approved Direktur" || selectedLetter.status === "Terkirim"
+                      ? "✓ Sertifikat Aktif"
+                      : "⚠ Draf / Belum Disahkan"
+                    }
+                  </span>
+                </div>
+
+                <div className="flex flex-col md:flex-row gap-4 items-center bg-slate-50/50 dark:bg-slate-950/20 p-4 rounded-lg border border-slate-150 dark:border-slate-800/80">
+                  {/* QR Image Visualizer Card */}
+                  <div className="shrink-0 p-2.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl relative group shadow-sm">
+                    <div 
+                      className="w-24 h-24 flex items-center justify-center cursor-pointer transition-transform duration-100 active:scale-[0.98]"
+                      onClick={() => setIsVerifyModalOpen(true)}
+                      title="Klik untuk detail sertifikat kriptografi"
+                      dangerouslySetInnerHTML={{ 
+                        __html: generateVerificationQR(
+                          `FORSDIG-DOC|id:${selectedLetter.id}|vcode:${selectedLetter.verificationCode}|status:${selectedLetter.status}|signatory:${selectedLetter.signatory}`, 
+                          96, 
+                          96
+                        ) 
+                      }} 
+                    />
+                    <div className="absolute inset-0 bg-black/60 text-[10px] font-bold text-white flex flex-col items-center justify-center opacity-0 group-hover:opacity-100 rounded-xl transition-all duration-150 cursor-pointer text-center p-1">
+                      <Search className="h-4 w-4 mb-1 text-blue-400" />
+                      <span>UJI INTEGRITAS</span>
+                    </div>
+                  </div>
+
+                  <div className="flex-1 space-y-3 text-left w-full">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-2 text-[11px] leading-relaxed">
+                      <div>
+                        <span className="text-slate-400 dark:text-slate-500 font-medium">Document ID:</span>
+                        <p className="font-mono font-bold text-slate-800 dark:text-slate-200">{selectedLetter.id}</p>
+                      </div>
+                      <div>
+                        <span className="text-slate-400 dark:text-slate-500 font-medium">Kode Integritas TTE:</span>
+                        <p className="font-mono font-bold text-slate-800 dark:text-slate-200">{selectedLetter.verificationCode}</p>
+                      </div>
+                      <div>
+                        <span className="text-slate-400 dark:text-slate-500 font-medium">Sifat Autentikasi:</span>
+                        <p className="font-bold text-slate-800 dark:text-slate-200">
+                          {selectedLetter.signatureEnabled ? "Elektronik (QR TTE)" : "Tanda Tangan Manual Pad"}
+                        </p>
+                      </div>
+                      <div>
+                        <span className="text-slate-400 dark:text-slate-500 font-medium">Sertifikat Otorisasi:</span>
+                        <p className={`font-bold ${
+                          selectedLetter.status === "Approved Direktur" || selectedLetter.status === "Terkirim"
+                            ? "text-emerald-600 dark:text-emerald-400"
+                            : "text-amber-600 dark:text-amber-500"
+                        }`}>{selectedLetter.status}</p>
+                      </div>
+                    </div>
+
+                    <div className="pt-2.5 border-t border-slate-150 dark:border-slate-800 flex justify-end">
+                      <button
+                        type="button"
+                        onClick={() => setIsVerifyModalOpen(true)}
+                        className="inline-flex items-center space-x-1.5 text-blue-600 dark:text-blue-400 bg-blue-50 hover:bg-blue-100 dark:bg-blue-950/45 dark:hover:bg-blue-950/70 font-bold text-[11px] px-3.5 py-1.5 rounded-lg border border-blue-200/50 dark:border-blue-900/30 transition-all cursor-pointer shadow-sm active:scale-95"
+                        id="btn-verify-integrity"
+                      >
+                        <ShieldCheck className="h-3.5 w-3.5 shrink-0" />
+                        <span>Buka Utilitas Verifikasi QR</span>
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </div>
 
               {/* Physical Kop Surat Frame */}
               <div 
@@ -1154,8 +1290,26 @@ export default function SuratKeluar({
                 </div>
               </div>
 
-              {/* Master Template Dropdown field */}
+              {/* Master Template & Category Dropdown fields */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-slate-500 font-semibold mb-1">Kategori / Jenis Surat</label>
+                  <select 
+                    value={letterCategory}
+                    onChange={(e) => setLetterCategory(e.target.value)}
+                    className="w-full p-2 border border-slate-200 dark:border-slate-800 rounded bg-slate-50 dark:bg-slate-950 text-slate-800 dark:text-slate-100 font-medium"
+                    id="letter-category-select"
+                  >
+                    <option value="Undangan">Surat Undangan (UND)</option>
+                    <option value="Penawaran">Surat Penawaran (PNW)</option>
+                    <option value="Tugas">Surat Perintah Tugas (TGS)</option>
+                    <option value="Keputusan">Surat Keputusan (SK)</option>
+                    <option value="Pemberitahuan">Surat Pemberitahuan (PBT)</option>
+                    <option value="Pengumuman">Surat Pengumuman (PGM)</option>
+                    <option value="Lainnya">Korespondensi Umum (KOR)</option>
+                  </select>
+                </div>
+
                 <div>
                   <label className="block text-slate-500 font-semibold mb-1">Mulai Dengan Master Template</label>
                   <select 
@@ -1169,6 +1323,25 @@ export default function SuratKeluar({
                     ))}
                   </select>
                 </div>
+              </div>
+
+              {/* Dynamic live letter number preview */}
+              <div className="bg-slate-50 dark:bg-slate-950/60 border border-slate-150 dark:border-slate-850 p-3.5 rounded-xl flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
+                <div>
+                  <span className="text-[10px] font-bold text-blue-600 dark:text-blue-400 uppercase tracking-widest block">Format Nomor Surat Otomatis Live:</span>
+                  <span className="font-mono text-xs sm:text-sm font-bold text-slate-800 dark:text-slate-100 mt-1 block">
+                    {generateLetterNumber(letters.length, companySetting, letterCategory)}
+                  </span>
+                </div>
+                <div className="shrink-0 flex items-center space-x-1.5 self-start sm:self-center">
+                  <span className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
+                  <span className="text-[10px] font-bold uppercase py-0.5 px-2 bg-blue-50/50 dark:bg-blue-950/40 text-blue-700 dark:text-blue-300 rounded border border-blue-100 dark:border-blue-900/40">
+                    Kategori: {letterCategory}
+                  </span>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
 
                 <div>
                   <label className="block text-slate-500 font-semibold mb-1">Nama Penerima Dokumen</label>
@@ -1190,6 +1363,17 @@ export default function SuratKeluar({
                     placeholder="Contoh: PT ABC Makmur"
                     value={recipientInst}
                     onChange={(e) => setRecipientInst(e.target.value)}
+                    className="w-full p-2 border border-slate-200 dark:border-slate-800 rounded bg-slate-50 dark:bg-slate-950 text-slate-800 dark:text-slate-100"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-slate-500 font-semibold mb-1">Email Penerima (Untuk Kirim Resend)</label>
+                  <input 
+                    type="email" 
+                    placeholder="Contoh: penerima@instansi.com"
+                    value={recipientEmail}
+                    onChange={(e) => setRecipientEmail(e.target.value)}
                     className="w-full p-2 border border-slate-200 dark:border-slate-800 rounded bg-slate-50 dark:bg-slate-950 text-slate-800 dark:text-slate-100"
                   />
                 </div>
@@ -1426,6 +1610,336 @@ export default function SuratKeluar({
                   )}
                 </button>
               </div>
+            </div>
+          </div>
+        </div>
+      )}
+      {/* MODAL: QR Code Security Verification Utility */}
+      {isVerifyModalOpen && selectedLetter && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex justify-center items-center z-50 p-4">
+          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl shadow-2xl w-full max-w-xl overflow-hidden animate-in fade-in zoom-in-95 duration-200">
+            {/* Header */}
+            <div className="p-4 bg-slate-900 text-white font-bold text-sm flex justify-between items-center border-b border-slate-850">
+              <span className="flex items-center space-x-2">
+                <ShieldCheck className="h-5 w-5 text-emerald-400 shrink-0" />
+                <span>e-Office / Audit Integritas & Validitas TTE</span>
+              </span>
+              <button 
+                onClick={() => setIsVerifyModalOpen(false)} 
+                className="text-slate-400 hover:text-white transition-colors cursor-pointer"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+
+            <div className="p-6 space-y-5 text-xs md:text-sm max-h-[80vh] overflow-y-auto">
+              {/* Dynamic Scanning Visualization */}
+              <div className="relative border border-dashed border-blue-200 dark:border-blue-900/60 bg-blue-50/20 dark:bg-blue-950/10 rounded-xl p-4 flex flex-col items-center justify-center overflow-hidden">
+                {/* Horizontal scanner beam animation bar */}
+                <div className="absolute top-0 bottom-0 left-0 right-0 pointer-events-none">
+                  <div className="w-full h-1 bg-gradient-to-r from-transparent via-blue-500 to-transparent blur-sm animate-bounce duration-3000 opacity-70" />
+                </div>
+
+                <div className="flex items-center space-x-4">
+                  <div className="p-2 bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-850 rounded-lg shrink-0 shadow-md">
+                    <div 
+                      dangerouslySetInnerHTML={{ 
+                        __html: generateVerificationQR(
+                          `FORSDIG-DOC|id:${selectedLetter.id}|vcode:${selectedLetter.verificationCode}|status:${selectedLetter.status}|signatory:${selectedLetter.signatory}`, 
+                          80, 
+                          80
+                        ) 
+                      }} 
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <h5 className="font-bold text-slate-905 dark:text-slate-200 text-sm">Sertifikat Digital Valid</h5>
+                    <p className="text-[11px] text-slate-500 dark:text-slate-400">
+                      Instansi: <span className="font-semibold text-slate-700 dark:text-slate-300">PT FORSDIG TEKNOLOGI INDONESIA</span>
+                    </p>
+                    <p className="text-[11px] text-slate-500 dark:text-slate-400">
+                      Status Keluar: <span className="px-1.5 py-0.5 bg-blue-100 dark:bg-blue-950 text-blue-800 dark:text-blue-300 rounded font-mono font-bold text-[9px] uppercase">{selectedLetter.status}</span>
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Document Identity/Metadata Sheet */}
+              <div className="border border-slate-200 dark:border-slate-800 rounded-xl overflow-hidden shadow-sm text-xs">
+                <div className="p-3 bg-slate-50/80 dark:bg-slate-950/40 border-b border-slate-200 dark:border-slate-800 font-bold text-slate-700 dark:text-slate-300">
+                  Resensi Metadata Surat
+                </div>
+                <div className="divide-y divide-slate-150 dark:divide-slate-850">
+                  <div className="p-3 grid grid-cols-3 gap-2">
+                    <span className="text-slate-400 font-medium">Nomor Surat (Agenda)</span>
+                    <span className="col-span-2 font-semibold font-mono text-slate-800 dark:text-slate-200">{selectedLetter.letterNumber}</span>
+                  </div>
+                  <div className="p-3 grid grid-cols-3 gap-2">
+                    <span className="text-slate-400 font-medium">Perihal Dokumen</span>
+                    <span className="col-span-2 font-semibold text-slate-800 dark:text-slate-200">{selectedLetter.subject}</span>
+                  </div>
+                  <div className="p-3 grid grid-cols-3 gap-2">
+                    <span className="text-slate-400 font-medium font-sans">Penerima & Instansi</span>
+                    <span className="col-span-2 text-slate-800 dark:text-slate-200">
+                      <p className="font-bold">{selectedLetter.recipient}</p>
+                      <p className="text-[11px] text-slate-500 dark:text-slate-400">{selectedLetter.recipientInstitution}</p>
+                    </span>
+                  </div>
+                  <div className="p-3 grid grid-cols-3 gap-2">
+                    <span className="text-slate-400 font-medium">Penandatangan Utama</span>
+                    <span className="col-span-2 text-slate-800 dark:text-slate-200">
+                      <p className="font-bold">{selectedLetter.signatory}</p>
+                      <p className="text-[11px] text-slate-505 dark:text-slate-450">Direktur Utama (e-Sign TTE)</p>
+                    </span>
+                  </div>
+                  <div className="p-3 grid grid-cols-3 gap-2">
+                    <span className="text-slate-400 font-medium">Hash Kode Pengenal</span>
+                    <span className="col-span-2 font-mono font-bold text-blue-700 dark:text-blue-400">{selectedLetter.verificationCode}</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Cryptographic Step-by-Step Validation Status */}
+              <div className="space-y-2.5">
+                <span className="block font-bold text-slate-750 dark:text-slate-300 text-xs uppercase tracking-wider">Hasil Audit Security Gateway:</span>
+                
+                <div className="space-y-2">
+                  {/* Step 1: Format Integrity */}
+                  <div className="flex items-start space-x-2.5 p-2 bg-slate-50 dark:bg-slate-950/10 border border-slate-150 dark:border-slate-850 rounded-lg">
+                    <CheckCircle2 className="h-4.5 w-4.5 text-emerald-500 mt-0.5 shrink-0" />
+                    <div>
+                      <p className="font-bold text-slate-80s dark:text-slate-200 text-xs">Uji Integritas File & Skema Metadata</p>
+                      <p className="text-[11px] text-slate-500">Kesesuaian format standar kearsipan PT FGI Indonesia dinyatakan 100% Valid.</p>
+                    </div>
+                  </div>
+
+                  {/* Step 2: Signature Authencity based on state */}
+                  <div className="flex items-start space-x-2.5 p-2 bg-slate-50 dark:bg-slate-950/10 border border-slate-150 dark:border-slate-850 rounded-lg">
+                    {selectedLetter.status === "Approved Direktur" || selectedLetter.status === "Terkirim" ? (
+                      <>
+                        <CheckCircle2 className="h-4.5 w-4.5 text-emerald-500 mt-0.5 shrink-0" />
+                        <div>
+                          <p className="font-bold text-slate-805 dark:text-slate-200 text-xs">Otorisasi Tanda Tangan Elektronik (TTE)</p>
+                          <p className="text-[11px] text-emerald-600 dark:text-emerald-450 font-medium">✓ TANDA TANGAN SAH: Berkas disahkan secara legal oleh Direktur {selectedLetter.signatory} menggunakan kunci privat terverifikasi.</p>
+                        </div>
+                      </>
+                    ) : selectedLetter.status === "Approved Manager" ? (
+                      <>
+                        <div className="w-4.5 h-4.5 rounded-full border-2 border-amber-400 flex items-center justify-center text-amber-500 mt-0.5 shrink-0 text-[10px] font-bold">!</div>
+                        <div>
+                          <p className="font-bold text-slate-805 dark:text-slate-200 text-xs">Otorisasi Tanda Tangan Elektronik (TTE)</p>
+                          <p className="text-[11px] text-amber-600 dark:text-amber-500 font-medium">⚠ MENUNGGU TTE DIREKTUR: Draf disetujui Manager tetapi belum ditandatangani secara digital oleh Direktur Utama.</p>
+                        </div>
+                      </>
+                    ) : (
+                      <>
+                        <div className="w-4.5 h-4.5 rounded-full border-2 border-slate-300 flex items-center justify-center text-slate-400 mt-0.5 shrink-0 text-[9px] font-bold">x</div>
+                        <div>
+                          <p className="font-bold text-slate-805 dark:text-slate-200 text-xs">Otorisasi Tanda Tangan Elektronik (TTE)</p>
+                          <p className="text-[11px] text-slate-500">✗ DRAF NON-TTE: Berkas ini masih berstatus draf internal, sertifikasi TTE belum diterbitkan.</p>
+                        </div>
+                      </>
+                    )}
+                  </div>
+
+                  {/* Step 3: Security Timestamp Seal */}
+                  <div className="flex items-start space-x-2.5 p-2 bg-slate-50 dark:bg-slate-950/10 border border-slate-150 dark:border-slate-850 rounded-lg">
+                    <CheckCircle2 className="h-4.5 w-4.5 text-emerald-500 mt-0.5 shrink-0" />
+                    <div>
+                      <p className="font-bold text-slate-808 dark:text-slate-200 text-xs">Timestamp Kearsipan & Audit Trails</p>
+                      <p className="text-[11px] text-slate-500">Didaftarkan ke server cloud pada {selectedLetter.createdAt ? new Date(selectedLetter.createdAt).toLocaleString("id-ID") : "Waktu Draft"} WIB.</p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Big legal status bottom section */}
+              {selectedLetter.status === "Approved Direktur" || selectedLetter.status === "Terkirim" ? (
+                <div className="bg-emerald-50 dark:bg-emerald-950/30 border border-emerald-100 dark:border-emerald-900/45 p-3 rounded-lg text-emerald-800 dark:text-emerald-300 flex items-center space-x-3 shadow-inner">
+                  <Award className="h-8 w-8 text-emerald-600 dark:text-emerald-400 shrink-0" />
+                  <div>
+                    <h6 className="font-extrabold text-[11px] sm:text-xs">DOKUMEN DINYATAKAN SAH (LEGAL)</h6>
+                    <p className="text-[10px] leading-relaxed text-emerald-700/90 dark:text-emerald-400/80 mt-0.5">Seluruh elemen metadata surat keluar ini telah dicocokkan dengan basis data audit instansi FGI. Dokumen ini memenuhi ketentuan hukum kearsipan digital nasional.</p>
+                  </div>
+                </div>
+              ) : (
+                <div className="bg-slate-105 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 p-3 rounded-lg text-slate-650 dark:text-slate-400 flex items-center space-x-3">
+                  <ShieldAlert className="h-8 w-8 text-amber-500 shrink-0" />
+                  <div>
+                    <h6 className="font-bold text-[11px] sm:text-xs text-slate-800 dark:text-slate-300">DOKUMEN INTERNAL / DRAF BELUM LEGAL</h6>
+                    <p className="text-[10px] leading-relaxed mt-0.5">Surat ini masih dalam tahap peninjauan. Anda tidak diperkenankan untuk merilis surat yang belum bersertifikasi aktif kepada mitra eksternal.</p>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Footer buttons */}
+            <div className="p-4 bg-slate-50 dark:bg-slate-950 border-t border-slate-200 dark:border-slate-800 flex justify-end">
+              <button
+                onClick={() => setIsVerifyModalOpen(false)}
+                className="bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold py-2 px-5 rounded-lg shadow-md transition-all cursor-pointer"
+              >
+                Tutup Review
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL: Email Template Review (Resend Simulator) */}
+      {isEmailPreviewModalOpen && selectedLetter && (
+        <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex justify-center items-center z-50 p-4">
+          <div className="bg-slate-100 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl shadow-2xl w-full max-w-2xl overflow-hidden animate-in fade-in zoom-in-95 duration-200 flex flex-col max-h-[90vh]">
+            {/* Header */}
+            <div className="p-4 bg-slate-900 text-white font-bold text-sm flex justify-between items-center border-b border-slate-850">
+              <span className="flex items-center space-x-2">
+                <Send className="h-4 w-4 text-indigo-400 shrink-0" />
+                <span>Pratinjau Email Resmi (Resend Template Review)</span>
+              </span>
+              <button 
+                onClick={() => setIsEmailPreviewModalOpen(false)} 
+                className="text-slate-400 hover:text-white transition-colors cursor-pointer"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+
+            {/* Email client shell wrapper */}
+            <div className="p-4 md:p-6 space-y-4 overflow-y-auto flex-1 bg-slate-50 dark:bg-slate-950">
+              
+              {/* Mail client toolbar & headers */}
+              <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-4 shadow-sm space-y-2.5">
+                {/* Simulated browser controls */}
+                <div className="flex items-center space-x-1.5 pb-2 border-b border-slate-100 dark:border-slate-800/60">
+                  <span className="w-2.5 h-2.5 rounded-full bg-red-400" />
+                  <span className="w-2.5 h-2.5 rounded-full bg-yellow-400" />
+                  <span className="w-2.5 h-2.5 rounded-full bg-green-400" />
+                  <span className="text-[10px] text-slate-400 font-mono pl-2 font-medium">resend-gateway-secure-ssl.v1</span>
+                </div>
+
+                <div className="space-y-1.5 text-xs">
+                  <div className="flex items-center col-span-1">
+                    <span className="w-16 font-bold text-slate-400 text-left">Dari:</span>
+                    <span className="font-medium text-slate-700 dark:text-slate-300">
+                      FGI Office <span className="font-mono text-slate-400 text-[10px]">&lt;onboarding@resend.dev&gt;</span>
+                    </span>
+                  </div>
+                  <div className="flex items-center">
+                    <span className="w-16 font-bold text-slate-400 text-left">Kepada:</span>
+                    <span className="px-2 py-0.5 bg-blue-50 dark:bg-blue-950 text-blue-700 dark:text-blue-300 rounded font-semibold font-mono text-[11px] border border-blue-100 dark:border-blue-900/30">
+                      {selectedLetter.recipientEmail || companySetting.companyEmail}
+                    </span>
+                  </div>
+                  <div className="flex items-center">
+                    <span className="w-16 font-bold text-slate-400 text-left">Subjek:</span>
+                    <span className="font-bold text-slate-900 dark:text-slate-100">
+                      [FGI OFFICE] - {selectedLetter.subject}
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+              {/* LIVE RENDERED EMAIL BODY CONTAINER */}
+              <div className="border border-slate-200 dark:border-slate-800 rounded-xl overflow-hidden shadow-md bg-white text-slate-800 text-left">
+                
+                {/* Resend Header Brand */}
+                <div className="bg-blue-900 text-white p-6 border-b-4 border-blue-500">
+                  <h3 className="text-lg font-extrabold tracking-wide uppercase">PT FGI INDONESIA</h3>
+                  <p className="text-[10px] text-blue-200 tracking-wider font-semibold uppercase mt-0.5">SISTEM KORESPONDENSI & ARSIP DIGITAL TERPADU</p>
+                </div>
+
+                {/* Resend Main Body Content */}
+                <div className="p-6 md:p-8 space-y-6">
+                  
+                  {/* Subject Title Inline */}
+                  <h4 className="text-sm font-bold text-slate-900 border-l-4 border-blue-900 pl-3">
+                    {selectedLetter.subject}
+                  </h4>
+
+                  {/* Body Content */}
+                  <p className="text-xs md:text-sm text-slate-700 leading-relaxed whitespace-pre-line antialiased">
+                    {getSubstitutedContent(selectedLetter.content)}
+                  </p>
+
+                  {/* Attachment indicator block */}
+                  <div className="p-3 bg-slate-50 border border-slate-150 rounded-lg flex items-center justify-between text-xs">
+                    <div className="flex items-center space-x-2.5">
+                      <FileText className="h-4.5 w-4.5 text-blue-600" />
+                      <div>
+                        <span className="font-bold text-slate-800">Letter_{selectedLetter.verificationCode}.pdf</span>
+                        <span className="text-[10px] text-slate-400 block mt-0.5">Automated Electronic Letter PDF Attachment</span>
+                      </div>
+                    </div>
+                    <span className="text-[9px] font-bold py-0.5 px-2 bg-emerald-50 text-emerald-700 border border-emerald-200 rounded shrink-0 uppercase tracking-wide">
+                      Auto Attached
+                    </span>
+                  </div>
+
+                  {/* Credentials Sheet Metadata (Just like server.ts layout) */}
+                  <div className="bg-slate-50/80 border border-slate-150 rounded-lg p-4 space-y-3">
+                    <span className="text-[9.5px] font-bold text-slate-500 uppercase tracking-wider block">Sertifikasi & Kredensial TTE</span>
+                    <div className="divide-y divide-slate-150 text-xs">
+                      <div className="py-2 flex justify-between">
+                        <span className="text-slate-500">Nomor Surat</span>
+                        <span className="font-mono font-bold text-slate-800">{selectedLetter.letterNumber || '-'}</span>
+                      </div>
+                      <div className="py-2 flex justify-between">
+                        <span className="text-slate-500">Tanggal Surat</span>
+                        <span className="font-medium text-slate-800">{selectedLetter.letterDate || '-'}</span>
+                      </div>
+                      <div className="py-2 flex justify-between">
+                        <span className="text-slate-500">Penerima</span>
+                        <span className="font-medium text-slate-800">{selectedLetter.recipient} ({selectedLetter.recipientInstitution || '-'})</span>
+                      </div>
+                      <div className="py-2 flex justify-between">
+                        <span className="text-slate-500">Penandatangan</span>
+                        <span className="font-medium text-slate-800">{selectedLetter.signatory || '-'}</span>
+                      </div>
+                      <div className="py-2 flex justify-between">
+                        <span className="text-slate-500">Kode Verifikasi TTE</span>
+                        <span className="font-mono font-bold text-slate-850 bg-slate-150 px-1.5 py-0.5 rounded text-[10px]">{selectedLetter.verificationCode}</span>
+                      </div>
+                      <div className="py-2 flex justify-between">
+                        <span className="text-slate-400">Status Dokumen</span>
+                        <span className="inline-flex items-center space-x-1 py-0.5 px-1.5 bg-emerald-50 text-emerald-700 border border-emerald-200 rounded text-[9px] font-bold uppercase">
+                          <span>✓ TERKIRIM & RESERVED TTE</span>
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+
+                </div>
+
+                {/* Resend Footer Area */}
+                <div className="bg-slate-50 p-6 border-t border-slate-200 text-center text-[10px] text-slate-505 leading-normal">
+                  <p>
+                    Pemberitahuan resmi ini dikirimkan secara otomatis oleh modul FGI Office Analytics Hub.<br />
+                    Gedung FGI Hub, Lt. 12, Jakarta Selatan, DKI Jakarta.<br />
+                    <em>Harap tidak membalas email ini secara langsung karena transmisi ini berjalan di bawah protokol otomatis.</em>
+                  </p>
+                </div>
+
+              </div>
+
+              {/* Informative Tip Box */}
+              <div className="p-3.5 bg-blue-50/60 dark:bg-blue-950/20 border border-blue-100/70 dark:border-blue-900/40 rounded-xl flex items-start space-x-2.5 text-[11px] leading-relaxed text-blue-700 dark:text-blue-300">
+                <CheckCircle2 className="h-4.5 w-4.5 text-blue-500 shrink-0 mt-0.5" />
+                <p>
+                  <strong>Tip Format Email:</strong> Pratinjau di atas mereprentasikan layout HTML resmi dari provider email cloud <strong>Resend</strong>. Jika data API key terhubung secara riil di panel rahasia (secrets), email ini akan mendarat persis seperti aslinya di kotak masuk korespondensi mitra Anda.
+                </p>
+              </div>
+
+            </div>
+
+            {/* Footer Buttons */}
+            <div className="p-4 bg-slate-100 dark:bg-slate-950 border-t border-slate-200 dark:border-slate-850 flex justify-between items-center">
+              <span className="text-[10px] font-semibold text-slate-400">FGI Mail Preview Engine v2</span>
+              <button
+                onClick={() => setIsEmailPreviewModalOpen(false)}
+                className="bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold py-2 px-5 rounded-lg shadow-md transition-all cursor-pointer"
+              >
+                Kembali ke Dokumen
+              </button>
             </div>
           </div>
         </div>

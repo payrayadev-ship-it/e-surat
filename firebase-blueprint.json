@@ -141,6 +141,20 @@
         "letterNumberFormat": { "type": "string" }
       },
       "required": ["companyName", "letterNumberFormat"]
+    },
+    "ai_log": {
+      "title": "AI Execution Log",
+      "description": "Trace and quality tracking logs of Gemini AI requests",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "userId": { "type": "string" },
+        "prompt": { "type": "string" },
+        "response": { "type": "string" },
+        "status": { "type": "string", "enum": ["SUCCESS", "FAILED"] },
+        "createdAt": { "type": "string" }
+      },
+      "required": ["prompt", "response", "status", "createdAt"]
     }
   },
   "firestore": {
@@ -175,6 +189,10 @@
     "/settings/{setId}": {
       "schema": "setting",
       "description": "System-wide configs"
+    },
+    "/ai_logs/{logId}": {
+      "schema": "ai_log",
+      "description": "System-wide traces of Gemini AI requests"
     }
   }
 }

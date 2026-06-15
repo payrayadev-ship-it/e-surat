@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { Plus, FileText, Calendar, Users, List, Send, MessageSquare, AlertCircle, Eye, CheckCircle, Printer } from "lucide-react";
+import { Plus, FileText, Calendar, Users, List, Send, MessageSquare, AlertCircle, Eye, CheckCircle, Printer, Sparkles, RefreshCw } from "lucide-react";
 import { Memo as MemoType, Meeting, UserRole, UserProfile } from "../types";
 
 interface MemosMeetingsProps {
@@ -37,6 +37,75 @@ export default function MemosMeetings({
   const [meetAgenda, setMeetAgenda] = useState("");
   const [meetResults, setMeetResults] = useState("");
   const [meetActions, setMeetActions] = useState("");
+
+  // AI Assistant states
+  const [generatingAI, setGeneratingAI] = useState(false);
+
+  const generateMemoContentWithAI = async () => {
+    if (!memoSubject) {
+      alert("Masukkan perihal memo terlebih dahulu agar AI dapat menyusun isinya!");
+      return;
+    }
+    setGeneratingAI(true);
+    try {
+      const res = await fetch("/api/gemini/generate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          prompt: `Tuliskan isi amanat memo dinas internal yang profesional, padat, dan formal untuk ditujukan kepada ${memoRecipient} dengan perihal perihal "${memoSubject}". Gunakan Bahasa Indonesia kedinasan yang baik.`,
+          mode: "text"
+        })
+      });
+      const data = await res.json();
+      if (data.success) {
+        setMemoContent(data.text);
+      } else {
+        alert("Gagal memproses draf memo: " + (data.error || "Layanan tidak bersedia"));
+      }
+    } catch (err) {
+      alert("Layanan AI sedang tidak tersedia. Silakan coba beberapa saat lagi.");
+    } finally {
+      setGeneratingAI(false);
+    }
+  };
+
+  const generateMeetingInsightsWithAI = async () => {
+    if (!meetTitle || !meetAgenda) {
+      alert("Silakan lengkapi Judul/Topik Rapat dan Agenda Utama terlebih dahulu!");
+      return;
+    }
+    setGeneratingAI(true);
+    try {
+      const res = await fetch("/api/gemini/generate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          prompt: `Tasarukan kesimpulan rapat (notulensi) yang formal dan 3 rencana tindak lanjut (action items) dari rapat bertema "${meetTitle}" dengan deskripsi agenda: "${meetAgenda}". Format jawaban Anda dalam 2 bagian jelas (Hasil Rapat & Rencana Tindak Lanjut).`,
+          mode: "text"
+        })
+      });
+      const data = await res.json();
+      if (data.success) {
+        const text = data.text;
+        const lowerText = text.toLowerCase();
+        let splitIndex = lowerText.indexOf("rencana");
+        if (splitIndex === -1) splitIndex = lowerText.indexOf("tindak");
+        if (splitIndex === -1) splitIndex = text.length / 2;
+        
+        const part1 = text.substring(0, splitIndex).trim();
+        const part2 = text.substring(splitIndex).trim();
+        
+        setMeetResults(part1 || "Hasil Rapat berhasil dikonstruksi otomatis.");
+        setMeetActions(part2 || "Menindaklanjuti program kerja tim sesuai tenggat.");
+      } else {
+        alert("Gagal memproses notulensi: " + (data.error || "Layanan tidak bersedia"));
+      }
+    } catch (err) {
+      alert("Layanan AI sedang tidak tersedia. Silakan coba beberapa saat lagi.");
+    } finally {
+      setGeneratingAI(false);
+    }
+  };
 
   const submitMemo = (e: React.FormEvent) => {
     e.preventDefault();
@@ -303,7 +372,22 @@ export default function MemosMeetings({
               </div>
 
               <div>
-                <label className="block text-slate-500 font-semibold mb-1">Isi & Amanat Memo Dinas</label>
+                <div className="flex justify-between items-center mb-1">
+                  <label className="block text-slate-500 font-semibold">Isi & Amanat Memo Dinas</label>
+                  <button
+                    type="button"
+                    onClick={generateMemoContentWithAI}
+                    disabled={generatingAI}
+                    className="text-[10px] text-indigo-600 dark:text-indigo-400 font-bold flex items-center space-x-1 hover:underline cursor-pointer disabled:opacity-50"
+                  >
+                    {generatingAI ? (
+                      <RefreshCw className="h-3 w-3 animate-spin" />
+                    ) : (
+                      <Sparkles className="h-3 w-3" />
+                    )}
+                    <span>Draft Otomatis via AI</span>
+                  </button>
+                </div>
                 <textarea 
                   required
                   placeholder="Ketik rincian memo kedinasan secara formal..."
@@ -390,6 +474,26 @@ export default function MemosMeetings({
                   onChange={(e) => setMeetAttendees(e.target.value)}
                   className="w-full p-2 border border-slate-200 dark:border-slate-800 rounded bg-slate-50 dark:bg-slate-950 text-slate-805 dark:text-slate-100"
                 />
+              </div>
+
+              <div className="bg-indigo-50/40 dark:bg-slate-950/40 p-2.5 rounded-lg border border-indigo-100/50 dark:border-indigo-900/30 text-xs flex justify-between items-center">
+                <div>
+                  <span className="font-bold text-slate-805 dark:text-white block">Sintesis Notulensi Berbantu AI (Gemini)</span>
+                  <span className="text-[10px] text-slate-400">Menyusun Hasil Resolusi & Rencana Kerja otomatis berbasis Topik & Agenda</span>
+                </div>
+                <button
+                  type="button"
+                  onClick={generateMeetingInsightsWithAI}
+                  disabled={generatingAI}
+                  className="bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 text-white font-bold py-1.5 px-3 rounded flex items-center space-x-1 hover:underline cursor-pointer text-[10px]"
+                >
+                  {generatingAI ? (
+                    <RefreshCw className="h-3 w-3 animate-spin" />
+                  ) : (
+                    <Sparkles className="h-3 w-3" />
+                  )}
+                  <span>Jadikan Notulan AI</span>
+                </button>
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">

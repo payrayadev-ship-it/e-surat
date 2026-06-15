@@ -1,0 +1,180 @@
+{
+  "entities": {
+    "user": {
+      "title": "User Profile",
+      "description": "User profile with roles and custom signatures",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string" },
+        "email": { "type": "string" },
+        "role": { "type": "string", "enum": ["Super Admin", "Direktur", "Manager", "Staff", "Viewer"] },
+        "avatarUrl": { "type": "string" },
+        "signatureUrl": { "type": "string" },
+        "qrVerificationCode": { "type": "string" },
+        "createdAt": { "type": "string" }
+      },
+      "required": ["id", "name", "email", "role"]
+    },
+    "letter_in": {
+      "title": "Incoming Mail",
+      "description": "Corporate incoming letters and documents",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "agendaNumber": { "type": "string" },
+        "letterNumber": { "type": "string" },
+        "letterDate": { "type": "string" },
+        "receivedDate": { "type": "string" },
+        "sender": { "type": "string" },
+        "senderInstitution": { "type": "string" },
+        "subject": { "type": "string" },
+        "category": { "type": "string" },
+        "urgency": { "type": "string", "enum": ["Biasa", "Penting", "Rahasia", "Sangat Rahasia"] },
+        "attachmentUrl": { "type": "string" },
+        "attachmentName": { "type": "string" },
+        "status": { "type": "string", "enum": ["Baru", "Diproses", "Didisposisi", "Selesai"] },
+        "createdBy": { "type": "string" },
+        "createdAt": { "type": "string" }
+      },
+      "required": ["letterNumber", "letterDate", "sender", "senderInstitution", "subject", "urgency", "status"]
+    },
+    "letter_out": {
+      "title": "Outgoing Mail",
+      "description": "Corporate outgoing letters with approval workflow",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "letterNumber": { "type": "string" },
+        "letterDate": { "type": "string" },
+        "recipient": { "type": "string" },
+        "recipientInstitution": { "type": "string" },
+        "subject": { "type": "string" },
+        "content": { "type": "string" },
+        "status": { "type": "string", "enum": ["Draft", "Review", "Approved Manager", "Approved Direktur", "Terkirim"] },
+        "signatureEnabled": { "type": "boolean" },
+        "verificationCode": { "type": "string" },
+        "signatory": { "type": "string" },
+        "draftBy": { "type": "string" },
+        "createdAt": { "type": "string" }
+      },
+      "required": ["letterNumber", "recipient", "recipientInstitution", "subject", "content", "status"]
+    },
+    "disposition": {
+      "title": "Disposition",
+      "description": "Leader dispositions for incoming letters",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "letterId": { "type": "string" },
+        "letterSubject": { "type": "string" },
+        "notes": { "type": "string" },
+        "priority": { "type": "string", "enum": ["Rendah", "Sedang", "Tinggi", "Mendesak"] },
+        "targetRole": { "type": "string" },
+        "senderId": { "type": "string" },
+        "senderName": { "type": "string" },
+        "status": { "type": "string" },
+        "createdAt": { "type": "string" }
+      },
+      "required": ["letterId", "notes", "priority", "targetRole"]
+    },
+    "memo": {
+      "title": "Internal Memo",
+      "description": "Internal business communications",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "memoNumber": { "type": "string" },
+        "senderId": { "type": "string" },
+        "senderName": { "type": "string" },
+        "recipientRole": { "type": "string" },
+        "subject": { "type": "string" },
+        "content": { "type": "string" },
+        "status": { "type": "string", "enum": ["Draft", "Terkirim", "Dibaca"] },
+        "createdAt": { "type": "string" }
+      },
+      "required": ["memoNumber", "recipientRole", "subject", "content", "status"]
+    },
+    "meeting": {
+      "title": "Meeting Minutes",
+      "description": "Corporate meeting agendas and results",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "title": { "type": "string" },
+        "date": { "type": "string" },
+        "time": { "type": "string" },
+        "attendees": { "type": "string" },
+        "agenda": { "type": "string" },
+        "results": { "type": "string" },
+        "actions": { "type": "string" },
+        "status": { "type": "string" },
+        "createdAt": { "type": "string" }
+      },
+      "required": ["title", "date", "attendees", "agenda", "results"]
+    },
+    "audit_log": {
+      "title": "Audit Log",
+      "description": "Security and activity trails of system usage",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "userId": { "type": "string" },
+        "userEmail": { "type": "string" },
+        "activity": { "type": "string" },
+        "actionType": { "type": "string" },
+        "ipAddress": { "type": "string" },
+        "timestamp": { "type": "string" }
+      },
+      "required": ["userId", "userEmail", "activity", "actionType", "timestamp"]
+    },
+    "setting": {
+      "title": "Settings",
+      "description": "General system configuration and business patterns",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "companyName": { "type": "string" },
+        "companyAddress": { "type": "string" },
+        "companyEmail": { "type": "string" },
+        "companyPhone": { "type": "string" },
+        "letterNumberFormat": { "type": "string" }
+      },
+      "required": ["companyName", "letterNumberFormat"]
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": "user",
+      "description": "User account information"
+    },
+    "/letters_in/{letterId}": {
+      "schema": "letter_in",
+      "description": "Inward letters collection"
+    },
+    "/letters_out/{letterId}": {
+      "schema": "letter_out",
+      "description": "Outward letters with approvals"
+    },
+    "/dispositions/{dispId}": {
+      "schema": "disposition",
+      "description": "Letter dispositions records"
+    },
+    "/memos/{memoId}": {
+      "schema": "memo",
+      "description": "Corporate internal memos"
+    },
+    "/meetings/{meetId}": {
+      "schema": "meeting",
+      "description": "Notulen rapat and meeting listings"
+    },
+    "/audit_logs/{logId}": {
+      "schema": "audit_log",
+      "description": "Immutable security logs of the e-Office app"
+    },
+    "/settings/{setId}": {
+      "schema": "setting",
+      "description": "System-wide configs"
+    }
+  }
+}

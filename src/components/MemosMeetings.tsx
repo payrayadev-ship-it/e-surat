@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { Plus, FileText, Calendar, Users, List, Send, MessageSquare, AlertCircle, Eye, CheckCircle, Printer, Sparkles, RefreshCw } from "lucide-react";
+import { Plus, FileText, Calendar, Users, List, Send, MessageSquare, AlertCircle, Eye, CheckCircle, Printer, Sparkles, RefreshCw, Bot, Clock } from "lucide-react";
 import { Memo as MemoType, Meeting, UserRole, UserProfile } from "../types";
 
 interface MemosMeetingsProps {
@@ -40,6 +40,97 @@ export default function MemosMeetings({
 
   // AI Assistant states
   const [generatingAI, setGeneratingAI] = useState(false);
+
+  // Automatic minutes/notulen states
+  const [isAutoNotulenOpen, setIsAutoNotulenOpen] = useState(false);
+  const [autoMeetTitle, setAutoMeetTitle] = useState("");
+  const [autoMeetDate, setAutoMeetDate] = useState(() => {
+    return new Date().toISOString().split('T')[0];
+  });
+  const [autoMeetTime, setAutoMeetTime] = useState("09:00 - 11:00 WIB");
+  const [autoMeetAttendees, setAutoMeetAttendees] = useState("");
+  const [autoMeetRoughNotes, setAutoMeetRoughNotes] = useState("");
+  const [isAutoGenerating, setIsAutoGenerating] = useState(false);
+
+  const generateAutoNotulenWithAI = async () => {
+    if (!autoMeetTitle.trim() || !autoMeetRoughNotes.trim()) {
+      alert("Silakan lengkapi Judul/Topik Rapat dan Poin Kasar Diskusi terlebih dahulu!");
+      return;
+    }
+    setIsAutoGenerating(true);
+    try {
+      const res = await fetch("/api/gemini/generate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          prompt: `Anda adalah Sekretaris Cerdas AI dari PT. Foresyndo Global Indonesia.
+Tugas Anda adalah merangkum daftar poin-poin diskusi rapat kasar menjadi draf notulen formal yang terstruktur rapi.
+
+INFORMASI RAPAT:
+- Judul/Topik Rapat: ${autoMeetTitle}
+- Peserta Rapat: ${autoMeetAttendees || "Seluruh anggota tim yang hadir"}
+
+POIN-POIN KASAR DISKUSI RAPAT:
+${autoMeetRoughNotes}
+
+Tolong sintesiskan informasi di atas menjadi 3 komponen dalam format JSON dengan properti string sebagai berikut:
+{
+  "agenda": "Daftar agenda utama atau pembicaraan yang dibahas pada rapat tersebut, dipisahkan koma atau dibuat list singkat berpoin tebal.",
+  "results": "Hasil kesepakatan rapat, poin keputusan operasional, atau resolusi penting yang disetujui. Tulis dalam bentuk butir-butir paragraf formal yang rapi.",
+  "actions": "Daftar rencana tindak lanjut (Action items), target implementasi, atau penugasan tugas kepada personil tim terkait secara terperinci."
+}
+
+PENTING: Respon Anda HANYA berupa text string JSON valid tanpa tambahan teks pengantar atau penutup apapun. Harap pastikan properti "agenda", "results", dan "actions" terisi secara profesional menggunakan Bahasa Indonesia formal, sopan, dan baku.`,
+          mode: "text"
+        })
+      });
+
+      const data = await res.json();
+      if (data.success) {
+        let runText = data.text || "";
+        runText = runText.trim();
+        if (runText.startsWith("```")) {
+          runText = runText.replace(/^```(json)?\s*/i, "").replace(/\s*```$/i, "").trim();
+        }
+
+        try {
+          const parsed = JSON.parse(runText);
+          
+          // Set to main form state values
+          setMeetTitle(autoMeetTitle);
+          setMeetDate(autoMeetDate || new Date().toISOString().split('T')[0]);
+          setMeetTime(autoMeetTime || "09:00 WIB");
+          setMeetAttendees(autoMeetAttendees || "Seluruh tim terkait");
+          setMeetAgenda(parsed.agenda || `Membahas perihal ${autoMeetTitle}`);
+          setMeetResults(parsed.results || "Kesepakatan dan mufakat telah dicapai pada rapat.");
+          setMeetActions(parsed.actions || "Rencana aksi akan dilaksanakan secepatnya sesuai jadwal.");
+
+          // Close wizard and open the form modal for review and editing
+          setIsAutoNotulenOpen(false);
+          setIsMeetOpen(true);
+        } catch (jsonErr) {
+          console.warn("Gemini output list was not standard JSON, executing fallback string mapping:", jsonErr);
+          // Fallback parser: put everything into results
+          setMeetTitle(autoMeetTitle);
+          setMeetDate(autoMeetDate || new Date().toISOString().split('T')[0]);
+          setMeetTime(autoMeetTime || "09:00 WIB");
+          setMeetAttendees(autoMeetAttendees || "Seluruh tim terkait");
+          setMeetAgenda(`Rapat Koordinasi: ${autoMeetTitle}`);
+          setMeetResults(runText);
+          setMeetActions("Sesuai instruksi tindak lanjut dari rapat.");
+
+          setIsAutoNotulenOpen(false);
+          setIsMeetOpen(true);
+        }
+      } else {
+        alert("Gagal memproses draf otomatis: " + (data.error || "Gagal menghubungi modul Gemini"));
+      }
+    } catch (err) {
+      alert("Terjadi kesalahan koneksi saat memproses Notulen AI.");
+    } finally {
+      setIsAutoGenerating(false);
+    }
+  };
 
   const generateMemoContentWithAI = async () => {
     if (!memoSubject) {
@@ -243,13 +334,24 @@ export default function MemosMeetings({
             </div>
 
             {canModify && !isViewer && (
-              <button 
-                onClick={() => setIsMeetOpen(true)}
-                className="flex items-center space-x-2 bg-blue-600 hover:bg-blue-700 font-semibold text-white px-4 py-2.5 rounded-lg text-sm transition-all shadow-sm"
-              >
-                <Plus className="h-4 w-4" />
-                <span>Buat Notulen Baru</span>
-              </button>
+              <div className="flex flex-wrap items-center gap-2">
+                <button 
+                  onClick={() => setIsAutoNotulenOpen(true)}
+                  className="flex items-center space-x-2 bg-gradient-to-r from-violet-600 to-indigo-655 hover:from-violet-700 hover:to-indigo-750 font-semibold text-white px-4 py-2.5 rounded-lg text-sm transition-all shadow-sm cursor-pointer"
+                  id="btn-auto-notulen"
+                >
+                  <Bot className="h-4 w-4 animate-pulse" />
+                  <span>Notulen Otomatis dengan AI</span>
+                </button>
+                <button 
+                  onClick={() => setIsMeetOpen(true)}
+                  className="flex items-center space-x-2 bg-blue-600 hover:bg-blue-700 font-semibold text-white px-4 py-2.5 rounded-lg text-sm transition-all shadow-sm cursor-pointer"
+                  id="btn-buat-notulen"
+                >
+                  <Plus className="h-4 w-4" />
+                  <span>Buat Notulen Baru</span>
+                </button>
+              </div>
             )}
           </div>
 
@@ -550,6 +652,128 @@ export default function MemosMeetings({
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL: Notulen Rapat Otomatis dengan AI */}
+      {isAutoNotulenOpen && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex justify-center items-center z-50 p-4 overflow-y-auto">
+          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl shadow-xl w-full max-w-2xl overflow-hidden animate-in fade-in zoom-in-95 duration-200">
+            <div className="p-4 bg-gradient-to-r from-violet-600 to-indigo-655 text-white font-bold text-base flex justify-between items-center">
+              <div className="flex items-center space-x-2">
+                <Bot className="h-5 w-5 animate-pulse" />
+                <span>Notulen Rapat Otomatis (Gemini AI)</span>
+              </div>
+              <button 
+                onClick={() => setIsAutoNotulenOpen(false)} 
+                className="text-white hover:text-slate-200 text-lg font-bold"
+              >
+                &times;
+              </button>
+            </div>
+
+            <div className="p-6 space-y-4 text-xs md:text-sm">
+              <div className="bg-violet-50/50 dark:bg-slate-950/40 p-4 rounded-lg border border-violet-100/50 dark:border-violet-900/30">
+                <h4 className="font-bold text-violet-900 dark:text-violet-300 flex items-center gap-1.5 mb-1 text-sm">
+                  <Sparkles className="h-4 w-4 text-violet-500 animate-spin" /> 
+                  Gunakan Asisten Sekretaris AI
+                </h4>
+                <p className="text-slate-600 dark:text-slate-400 leading-relaxed text-xs">
+                  Membantu menyusun notulensi rapat formal secara otomatis dari catatan pembicaraan kasar/bebas yang Anda masukkan. Selesai diproses, draf dapat ditinjau dan disunting kembali sebelum disimpan ke arsip resmi perusahaan.
+                </p>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="md:col-span-2">
+                  <label className="block text-slate-700 dark:text-slate-350 font-semibold mb-1">Topik / Nama Rapat</label>
+                  <input 
+                    type="text" 
+                    required
+                    placeholder="Contoh: Rapat Evaluasi Kinerja & Rencana Kerja Triwulan III"
+                    value={autoMeetTitle}
+                    onChange={(e) => setAutoMeetTitle(e.target.value)}
+                    className="w-full p-2.5 border border-slate-200 dark:border-slate-800 rounded bg-slate-50 dark:bg-slate-950 text-slate-805 dark:text-slate-100 focus:ring-2 focus:ring-violet-500/20 focus:border-violet-500 outline-none transition-all"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-slate-700 dark:text-slate-350 font-semibold mb-1">Tanggal Rapat</label>
+                  <input 
+                    type="date" 
+                    required
+                    value={autoMeetDate}
+                    onChange={(e) => setAutoMeetDate(e.target.value)}
+                    className="w-full p-2.5 border border-slate-200 dark:border-slate-800 rounded bg-slate-50 dark:bg-slate-950 text-slate-850 dark:text-slate-100 focus:ring-2 focus:ring-violet-500/20 focus:border-violet-500 outline-none transition-all"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-slate-700 dark:text-slate-350 font-semibold mb-1">Waktu Pelaksanaan</label>
+                  <input 
+                    type="text" 
+                    placeholder="Misal: 10:00 - 12:00 WIB"
+                    value={autoMeetTime}
+                    onChange={(e) => setAutoMeetTime(e.target.value)}
+                    className="w-full p-2.5 border border-slate-200 dark:border-slate-800 rounded bg-slate-50 dark:bg-slate-950 text-slate-805 dark:text-slate-100 focus:ring-2 focus:ring-violet-500/20 focus:border-violet-500 outline-none transition-all"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-slate-700 dark:text-slate-350 font-semibold mb-1">Daftar Hadir Peserta (Dipisah dengan Koma)</label>
+                <input 
+                  type="text" 
+                  placeholder="Contoh: Ir. Joko Sutrisno, Ibu Amalia, Budi Pratama (IT)"
+                  value={autoMeetAttendees}
+                  onChange={(e) => setAutoMeetAttendees(e.target.value)}
+                  className="w-full p-2.5 border border-slate-200 dark:border-slate-800 rounded bg-slate-50 dark:bg-slate-950 text-slate-805 dark:text-slate-100 focus:ring-2 focus:ring-violet-500/20 focus:border-violet-500 outline-none transition-all"
+                />
+              </div>
+
+              <div>
+                <div className="flex justify-between items-center mb-1">
+                  <label className="block text-slate-700 dark:text-slate-350 font-semibold">Catatan Kasar / Poin Hasil Diskusi Rapat</label>
+                  <span className="text-[10px] text-slate-400 font-mono">Input bebas / hasil chat</span>
+                </div>
+                <textarea 
+                  required
+                  rows={6}
+                  placeholder={`Ketik draf kasar pembahasan di sini secara bebas, contoh:\n- Pembukaan oleh pimpinan\n- Susi lapor progress integrasi digital sudah 90%\n- Budi usulkan server cloud diperbesar untuk antisipasi lonjakan trafik\n- Disetujui deploy server baru tanggal 15 Juli\n- Penutupan rincian budget oleh Divisi Keuangan`}
+                  value={autoMeetRoughNotes}
+                  onChange={(e) => setAutoMeetRoughNotes(e.target.value)}
+                  className="w-full p-3 border border-slate-200 dark:border-slate-800 rounded bg-slate-50 dark:bg-slate-950 text-slate-805 dark:text-slate-100 text-xs shadow-inner focus:ring-2 focus:ring-violet-500/20 focus:border-violet-500 outline-none transition-all leading-relaxed font-mono"
+                />
+              </div>
+
+              <div className="flex justify-end space-x-2 pt-4 border-t border-slate-100 dark:border-slate-800">
+                <button 
+                  type="button" 
+                  onClick={() => setIsAutoNotulenOpen(false)}
+                  className="px-4 py-2.5 border border-slate-250 dark:border-slate-800 text-slate-650 dark:text-slate-400 rounded-lg hover:bg-slate-100 font-semibold cursor-pointer"
+                >
+                  Batal
+                </button>
+                <button 
+                  type="button"
+                  onClick={generateAutoNotulenWithAI}
+                  disabled={isAutoGenerating || !autoMeetTitle.trim() || !autoMeetRoughNotes.trim()}
+                  className="px-5 py-2.5 bg-gradient-to-r from-violet-600 to-indigo-655 hover:from-violet-700 hover:to-indigo-750 disabled:from-slate-400 disabled:to-slate-500 disabled:opacity-50 text-white rounded-lg font-bold flex items-center space-x-2 shadow-md cursor-pointer"
+                >
+                  {isAutoGenerating ? (
+                    <>
+                      <RefreshCw className="h-4 w-4 animate-spin" />
+                      <span>Memproses Notulen...</span>
+                    </>
+                  ) : (
+                    <>
+                      <Sparkles className="h-4 w-4" />
+                      <span>Sintesis Notulen Formal</span>
+                    </>
+                  )}
+                </button>
+              </div>
+            </div>
           </div>
         </div>
       )}

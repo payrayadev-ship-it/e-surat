@@ -234,6 +234,7 @@ export default function SuratKeluar({
         setContentVal(`${data.opening}\n\n${data.body}\n\n${data.closing}`);
         setSignatoryName(data.signatoryRole || "Direktur Utama");
         setIsAiPanelOpen(false);
+        setIsAddOpen(true);
         setAiPrompt("");
       } else {
         alert("Gagal memproses respon dari Gemini.");
@@ -744,14 +745,24 @@ export default function SuratKeluar({
         </div>
         
         {canDraft && (
-          <button 
-            onClick={() => setIsAddOpen(true)}
-            className="flex items-center space-x-2 bg-blue-600 hover:bg-blue-700 font-semibold text-white px-4 py-2.5 rounded-lg text-sm transition-all shadow-sm"
-            id="btn-buat-surat-keluar"
-          >
-            <Plus className="h-4 w-4" />
-            <span>Konsep Surat Baru</span>
-          </button>
+          <div className="flex flex-wrap items-center gap-2">
+            <button 
+              onClick={() => setIsAiPanelOpen(true)}
+              className="flex items-center space-x-2 bg-gradient-to-r from-violet-600 to-indigo-650 hover:from-violet-700 hover:to-indigo-750 font-semibold text-white px-4 py-2.5 rounded-lg text-sm transition-all shadow-sm cursor-pointer"
+              id="btn-ai-letter-assistant"
+            >
+              <Bot className="h-4 w-4 animate-pulse" />
+              <span>Draf dengan Gemini AI</span>
+            </button>
+            <button 
+              onClick={() => setIsAddOpen(true)}
+              className="flex items-center space-x-2 bg-blue-600 hover:bg-blue-700 font-semibold text-white px-4 py-2.5 rounded-lg text-sm transition-all shadow-sm cursor-pointer"
+              id="btn-buat-surat-keluar"
+            >
+              <Plus className="h-4 w-4" />
+              <span>Konsep Surat Baru</span>
+            </button>
+          </div>
         )}
       </div>
 

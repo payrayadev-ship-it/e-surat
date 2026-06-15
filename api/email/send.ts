@@ -182,7 +182,7 @@ export default async function handler(req: any, res: any) {
   <div class="wrapper">
     <div class="container">
       <div class="header">
-        <h1 class="header-logo">PT FGI INDONESIA</h1>
+        <h1 class="header-logo">PT. Foresyndo Global Indonesia</h1>
         <div class="header-sub">SISTEM KORESPONDENSI & ARSIP DIGITAL TERPADU</div>
       </div>
       <div class="content">

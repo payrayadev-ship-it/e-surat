@@ -356,7 +356,7 @@ Instruksi User: ${prompt}`;
   <div class="wrapper">
     <div class="container">
       <div class="header">
-        <h1 class="header-logo">PT FGI INDONESIA</h1>
+        <h1 class="header-logo">PT. Foresyndo Global Indonesia</h1>
         <div class="header-sub">SISTEM KORESPONDENSI & ARSIP DIGITAL TERPADU</div>
       </div>
       <div class="content">
@@ -419,7 +419,7 @@ Instruksi User: ${prompt}`;
         console.log(`[RESEND ENGINE] Transmitting email to ${to} via official Resend SMTP Gateway...`);
         
         const response = await resend.emails.send({
-          from: "FGI Office <onboarding@resend.dev>",
+          from: "FGI Office <noreply@foresyndoglobalindonesia.my.id>",
           to: to,
           subject: subject,
           html: emailHtmlContent,

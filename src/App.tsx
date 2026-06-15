@@ -63,7 +63,7 @@ const WORKSPACE_USERS: UserProfile[] = [
 
 const DEFAULT_SETTING: CompanySetting = {
   id: "company_setting_1",
-  companyName: "PT FORSDIG TEKNOLOGI INDONESIA",
+  companyName: "PT. Foresyndo Global Indonesia",
   companyAddress: "Maspion Plaza Lantai 18, Jl. Gunung Sahari No.18, Jakarta Utara, DKI Jakarta 14420",
   companyPhone: "+62 21-5088-2940",
   companyEmail: "sekretariat@forsdig.com",

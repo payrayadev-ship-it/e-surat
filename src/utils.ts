@@ -151,7 +151,7 @@ export function injectTemplateVariables(template: string, vars: {
  */
 export const seedCompanySetting: CompanySetting = {
   id: "company_setting_default",
-  companyName: "PT FORSDIG TEKNOLOGI INDONESIA",
+  companyName: "PT. Foresyndo Global Indonesia",
   companyAddress: "Maspion Plaza Lt. 18, Jl. Gunung Sahari No.18, Jakarta Utara, 14420",
   companyEmail: "office@forsdig-teknologi.com",
   companyPhone: "+62 21-5099-8800",
@@ -228,7 +228,7 @@ export const seedLettersOut: LetterOut[] = [
     recipient: "Ibu Sri Mulyani, S.E., M.Sc.",
     recipientInstitution: "Kementerian Keuangan RI",
     subject: "Surat Penawaran Jasa Sistem ERP Digitalisasi Office",
-    content: "Dengan hormat,\n\nSehubungan dengan upaya modernisasi tata kelola administrasi pemerintahan, kami dari PT FORSDIG TEKNOLOGI INDONESIA bermaksud untuk menawarkan solusi Sistem ERP FORSDIG OFFICE.\n\nSistem e-Office yang kami kembangkan dirancang khusus untuk memotong waktu pemrosesan agenda surat masuk, disposisi instan, dan penandatanganan digital berbasis QR verifikasi secara otomatis. Kami siap mendemonstrasikan sistem ini di hadapan tim IT Kementerian.\n\nHormat kami,\nPT FORSDIG TEKNOLOGI INDONESIA",
+    content: "Dengan hormat,\n\nSehubungan dengan upaya modernisasi tata kelola administrasi pemerintahan, kami dari PT. Foresyndo Global Indonesia bermaksud untuk menawarkan solusi Sistem ERP FORSDIG OFFICE.\n\nSistem e-Office yang kami kembangkan dirancang khusus untuk memotong waktu pemrosesan agenda surat masuk, disposisi instan, dan penandatanganan digital berbasis QR verifikasi secara otomatis. Kami siap mendemonstrasikan sistem ini di hadapan tim IT Kementerian.\n\nHormat kami,\nPT. Foresyndo Global Indonesia",
     status: "Terkirim",
     signatureEnabled: true,
     verificationCode: "DOC-20260615-001",

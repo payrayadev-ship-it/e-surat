@@ -237,7 +237,7 @@ export default function ArsipDigital({ lettersIn, lettersOut, memos }: ArsipDigi
           <div className="p-4 border-b border-slate-150 dark:border-slate-800/85 flex justify-between items-center bg-slate-50/50 dark:bg-transparent">
             <div>
               <span className="text-sm font-bold text-slate-805 dark:text-white block">Berkas Terarsip ({filteredItems.length} dokumen)</span>
-              <p className="text-[11px] text-slate-450 dark:text-slate-500 mt-0.5">Sistem index terpusat PT FORSDIG TEKNOLOGI INDONESIA</p>
+              <p className="text-[11px] text-slate-450 dark:text-slate-500 mt-0.5">Sistem index terpusat PT. Foresyndo Global Indonesia</p>
             </div>
 
             <button 

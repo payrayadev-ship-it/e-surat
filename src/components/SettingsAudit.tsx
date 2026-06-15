@@ -192,7 +192,7 @@ export default function SettingsAudit({
       companyEmail,
       letterNumberFormat: numberFormat
     });
-    alert("Konfigurasi profil korporat PT FORSDIG OFFICE berhasil diperbarui!");
+    alert("Konfigurasi profil korporat PT. Foresyndo Global Indonesia berhasil diperbarui!");
   };
 
   const saveSmtpSettings = (e: React.FormEvent) => {
@@ -282,7 +282,7 @@ export default function SettingsAudit({
         {activeTab === "general" && (
           <form onSubmit={saveGeneralSettings} className="space-y-4" id="form-general-settings">
             <h3 className="text-base font-bold text-slate-805 dark:text-white border-b border-slate-100 pb-2">Konfigurasi Kop & Profil Perusahaan</h3>
-            <p className="text-xs text-slate-450 dark:text-slate-500">Sesuaikan metadata resmi PT untuk melengkapi draf KOP surat keluar otomatis.</p>
+            <p className="text-xs text-slate-450 dark:text-slate-500">Sesuaikan metadata resmi PT. Foresyndo Global Indonesia untuk melengkapi draf KOP surat keluar otomatis.</p>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs md:text-sm">
               <div>

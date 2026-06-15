@@ -65,7 +65,7 @@ export default function SuratMasuk({
       promptToSend = `Tolong bantu saya meringkas perihal surat masuk berikut ini secara profesional dan padat dalam Bahasa Indonesia: "${letter.subject}". Surat dikirimkan oleh ${letter.sender} dari instansi ${letter.senderInstitution} berkategori ${letter.category}. Sifat surat: ${letter.urgency}. Sediakan daftar poin penting dan berikan nada formal.`;
     } else if (actionType === "BALASAN") {
       titleMsg = "Draf Balasan Surat Resmi";
-      promptToSend = `Tolong bantu saya menyusun draf balasan formal atas surat masuk dengan subjek "${letter.subject}" dari ${letter.sender} (${letter.senderInstitution}). Format draf tanggapan dalam surat balasan perusahaan "PT FORSDIG TEKNOLOGI INDONESIA" secara sopan, lugas, dan rapi menggunakan Bahasa Indonesia baku.`;
+      promptToSend = `Tolong bantu saya menyusun draf balasan formal atas surat masuk dengan subjek "${letter.subject}" dari ${letter.sender} (${letter.senderInstitution}). Format draf tanggapan dalam surat balasan perusahaan "PT. Foresyndo Global Indonesia" secara sopan, lugas, dan rapi menggunakan Bahasa Indonesia baku.`;
     } else if (actionType === "DISPOSISI") {
       titleMsg = "Rekomendasi Petunjuk Disposisi";
       promptToSend = `Tolong buatkan rekomendasi instruksi atau perintah disposisi yang tepat dari Direksi/Pimpinan untuk diturunkan ke staff operasional atas surat masuk bertema: "${letter.subject}" yang dikirim oleh ${letter.sender}. Berikan 3 poin petunjuk taktis yang jelas.`;

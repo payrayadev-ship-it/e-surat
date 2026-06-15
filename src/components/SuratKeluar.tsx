@@ -39,7 +39,7 @@ Demikian surat undangan ini kami sampaikan, atas perhatian dan kehadirannya kami
     subject: "Penawaran Layanan Transformasi Digital e-Office",
     content: `Dengan hormat,
 
-Perkenalkan kami dari PT FORSDIG TEKNOLOGI INDONESIA, perusahaan inovator utama pada penyempurnaan sistem informasi korporat. Berselang dengan transisi bisnis digital nasional, kami bermaksud menawarkan kemitraan strategis kepada {{nama_penerima}} selaku {{jabatan}} {{alamat}}.
+Perkenalkan kami dari PT. Foresyndo Global Indonesia, perusahaan inovator utama pada penyempurnaan sistem informasi korporat. Berselang dengan transisi bisnis digital nasional, kami bermaksud menawarkan kemitraan strategis kepada {{nama_penerima}} selaku {{jabatan}} {{alamat}}.
 
 Kami menawarkan sistem administrasi e-Office FORSDIG yang handal untuk mengelola surat masuk, disposisi elektronik cepat, memo internal, dan tanda tangan digital terenkripsi QR Code dalam satu ekosistem cloud.
 
@@ -627,8 +627,8 @@ export default function SuratKeluar({
       doc.setFont("helvetica", "bold");
       doc.setFontSize(5.5);
       doc.setTextColor(29, 78, 216);
-      doc.text("PT FORSDIG", signX + 18, footerY + 10, { align: "center" });
-      doc.text("INDONESIA", signX + 18, footerY + 12.5, { align: "center" });
+      doc.text("PT. FORESYNDO", signX + 18, footerY + 10, { align: "center" });
+      doc.text("GLOBAL INDO", signX + 18, footerY + 12.5, { align: "center" });
       
       doc.setFontSize(4.5);
       doc.setFillColor(29, 78, 216);
@@ -1655,7 +1655,7 @@ export default function SuratKeluar({
                   <div className="space-y-1">
                     <h5 className="font-bold text-slate-905 dark:text-slate-200 text-sm">Sertifikat Digital Valid</h5>
                     <p className="text-[11px] text-slate-500 dark:text-slate-400">
-                      Instansi: <span className="font-semibold text-slate-700 dark:text-slate-300">PT FORSDIG TEKNOLOGI INDONESIA</span>
+                      Instansi: <span className="font-semibold text-slate-700 dark:text-slate-300">PT. Foresyndo Global Indonesia</span>
                     </p>
                     <p className="text-[11px] text-slate-500 dark:text-slate-400">
                       Status Keluar: <span className="px-1.5 py-0.5 bg-blue-100 dark:bg-blue-950 text-blue-800 dark:text-blue-300 rounded font-mono font-bold text-[9px] uppercase">{selectedLetter.status}</span>
@@ -1709,7 +1709,7 @@ export default function SuratKeluar({
                     <CheckCircle2 className="h-4.5 w-4.5 text-emerald-500 mt-0.5 shrink-0" />
                     <div>
                       <p className="font-bold text-slate-80s dark:text-slate-200 text-xs">Uji Integritas File & Skema Metadata</p>
-                      <p className="text-[11px] text-slate-500">Kesesuaian format standar kearsipan PT FGI Indonesia dinyatakan 100% Valid.</p>
+                      <p className="text-[11px] text-slate-500">Kesesuaian format standar kearsipan PT. Foresyndo Global Indonesia dinyatakan 100% Valid.</p>
                     </div>
                   </div>
 
@@ -1844,7 +1844,7 @@ export default function SuratKeluar({
                 
                 {/* Resend Header Brand */}
                 <div className="bg-blue-900 text-white p-6 border-b-4 border-blue-500">
-                  <h3 className="text-lg font-extrabold tracking-wide uppercase">PT FGI INDONESIA</h3>
+                  <h3 className="text-lg font-extrabold tracking-wide uppercase">PT. Foresyndo Global Indonesia</h3>
                   <p className="text-[10px] text-blue-200 tracking-wider font-semibold uppercase mt-0.5">SISTEM KORESPONDENSI & ARSIP DIGITAL TERPADU</p>
                 </div>
 

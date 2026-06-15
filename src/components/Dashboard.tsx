@@ -56,7 +56,7 @@ export default function Dashboard({ lettersIn, lettersOut, dispositions, auditLo
     doc.setTextColor(15, 23, 42); // slate-900
     doc.setFont("helvetica", "bold");
     doc.setFontSize(14);
-    doc.text("PT FGI INDONESIA", 36, 17);
+    doc.text("PT. Foresyndo Global Indonesia", 36, 17);
     
     doc.setFontSize(7.5);
     doc.setFont("helvetica", "normal");
@@ -385,7 +385,7 @@ export default function Dashboard({ lettersIn, lettersOut, dispositions, auditLo
             <span>FGI Office - Dashboard Utama</span>
             <span className="hidden sm:inline-block px-2.5 py-0.5 bg-blue-100/80 text-blue-800 dark:bg-blue-950/50 dark:text-blue-300 text-[10px] font-bold rounded-full border border-blue-200/50 uppercase tracking-widest font-mono">Real-time</span>
           </h2>
-          <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">Sistem Korespondensi Mandiri & Dashboard Analitis PT FGI INDONESIA</p>
+          <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">Sistem Korespondensi Mandiri & Dashboard Analitis PT. Foresyndo Global Indonesia</p>
         </div>
         
         <button

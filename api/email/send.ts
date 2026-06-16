@@ -244,7 +244,7 @@ export default async function handler(req: any, res: any) {
     if (resend) {
       console.log(`[RESEND ENGINE] Transmitting email to ${to} via Vercel official Resend SMTP Gateway...`);
       const response = await resend.emails.send({
-        from: "FGI Office <onboarding@resend.dev>",
+        from: "FGI Office <noreply@foresyndoglobalindonesia.my.id>",
         to: to,
         subject: subject,
         html: emailHtmlContent,

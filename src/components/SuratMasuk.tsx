@@ -3,6 +3,7 @@ import { Plus, Search, FileText, Share2, CornerDownRight, Check, AlertTriangle, 
 import { LetterIn, UserRole, Disposition, UserProfile } from "../types";
 import { collection, addDoc } from "firebase/firestore";
 import { db, auth } from "../firebase";
+import { jsPDF } from "jspdf";
 
 interface SuratMasukProps {
   letters: LetterIn[];
@@ -52,6 +53,309 @@ export default function SuratMasuk({
   const [aiStatus, setAiStatus] = useState<"IDLE" | "LOADING" | "ERROR">("IDLE");
   const [aiOutput, setAiOutput] = useState<string>("");
   const [aiActionName, setAiActionName] = useState<string>("");
+
+  const formatDateIndo = (dateStr: string) => {
+    try {
+      const d = new Date(dateStr);
+      if (isNaN(d.getTime())) return dateStr || "-";
+      return d.toLocaleDateString("id-ID", {
+        day: "numeric",
+        month: "long",
+        year: "numeric"
+      });
+    } catch {
+      return dateStr || "-";
+    }
+  };
+
+  const handleExportPDF = (letter: LetterIn) => {
+    if (!letter) return;
+
+    const doc = new jsPDF({
+      orientation: "portrait",
+      unit: "mm",
+      format: "a4"
+    });
+
+    // Fetch company settings from localStorage for corporate identity decoration
+    const saved = localStorage.getItem("company_setting");
+    let companyName = "PT. Foresyndo Global Indonesia";
+    let companyAddress = "MTH Square, Lt. 1 No. 03A, Jl. Letjen M.T. Haryono Kav. 10, Jakarta Timur";
+    let companyPhone = "+62 21 80010200";
+    let companyEmail = "info@foresyndoglobalindonesia.my.id";
+    if (saved) {
+      try {
+        const parsed = JSON.parse(saved);
+        if (parsed.companyName) companyName = parsed.companyName;
+        if (parsed.companyAddress) companyAddress = parsed.companyAddress;
+        if (parsed.companyPhone) companyPhone = parsed.companyPhone;
+        if (parsed.companyEmail) companyEmail = parsed.companyEmail;
+      } catch (e) {}
+    }
+
+    const pageHeight = 297;
+    const pageWidth = 210;
+    const leftMargin = 20;
+    const rightMargin = 190;
+    const contentWidth = 170;
+
+    // Helper to draw clean header on a page
+    const drawLetterhead = (pageNumber: number) => {
+      // --- 1. Draw Corporate Letter Head Logo (Rounded Rect with Gold contrast) ---
+      doc.setFillColor(30, 41, 142); // Navy Blue
+      doc.roundedRect(20, 15, 14, 14, 2, 2, "F");
+      
+      doc.setFillColor(234, 179, 8); // Golden Accent Accent Dot
+      doc.circle(23, 26, 1.5, "F");
+
+      // Logo text white bold
+      doc.setTextColor(255, 255, 255);
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(10);
+      doc.text("FGI", 26, 23.5, { align: "center" });
+
+      // --- 2. Company Name and Details (KOP SURAT) ---
+      doc.setTextColor(15, 23, 42); // Navy / Dark slate
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(14);
+      doc.text(companyName.toUpperCase(), 38, 19.5);
+
+      doc.setTextColor(71, 85, 105); // Slate Dark Grey
+      doc.setFont("helvetica", "normal");
+      doc.setFontSize(8.5);
+      
+      const addressLines = doc.splitTextToSize(companyAddress, 150);
+      doc.text(addressLines, 38, 24);
+      
+      // Telephone & email details line
+      const detailsLineY = 24 + (addressLines.length * 3.8);
+      
+      doc.setFont("helvetica", "bold");
+      doc.setTextColor(30, 41, 142);
+      doc.text("e-Office & Digital Signature Hub", 38, detailsLineY);
+      
+      doc.setFont("helvetica", "normal");
+      doc.setTextColor(100, 116, 139);
+      doc.text(` |  Telp: ${companyPhone}  |  Email: ${companyEmail}`, 85, detailsLineY);
+
+      // --- 3. Premium Double Divider borders ---
+      const lineY = detailsLineY + 3.5;
+      doc.setDrawColor(30, 41, 142);
+      doc.setLineWidth(1.0);
+      doc.line(20, lineY, 190, lineY);
+      
+      // Thin slate line
+      doc.setDrawColor(148, 163, 184);
+      doc.setLineWidth(0.3);
+      doc.line(20, lineY + 0.95, 190, lineY + 0.95);
+
+      // Page numbering indicator at the very bottom right
+      doc.setFont("helvetica", "normal");
+      doc.setFontSize(7.5);
+      doc.setTextColor(148, 163, 184);
+      doc.text(`Hal ${pageNumber}`, 190, 287, { align: "right" });
+      
+      // Return bottom position of the header
+      return lineY + 5;
+    };
+
+    // Draw the first page header
+    let currentY = drawLetterhead(1);
+    let currentPage = 1;
+
+    // Title: LEMBAR DISPOSISI & AGENDA SURAT MASUK
+    currentY += 5;
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(12);
+    doc.setTextColor(15, 23, 42);
+    doc.text("LEMBAR AGENDA & DISPOSISI SURAT MASUK", 105, currentY, { align: "center" });
+
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(8);
+    doc.setTextColor(100, 116, 139);
+    doc.text(`Dicetak secara resmi pada: ${new Date().toLocaleDateString('id-ID', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}`, 105, currentY + 4.5, { align: "center" });
+
+    currentY += 12;
+
+    // SECTION I: AGENDA REGISTRATION
+    doc.setFillColor(241, 245, 249);
+    doc.rect(20, currentY, 170, 7, "F");
+    
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(9.5);
+    doc.setTextColor(30, 41, 142);
+    doc.text("I. INFORMASI AGENDA KANTOR & REGISTRASI", 24, currentY + 5);
+
+    currentY += 10;
+
+    // Metadata Grid (Table-like structure)
+    doc.setFontSize(8.5);
+    doc.setDrawColor(226, 232, 240);
+    doc.setLineWidth(0.25);
+
+    // Helper row draw
+    const drawMetaRow = (label1: string, val1: string, label2: string, val2: string, yPos: number) => {
+      // Background for label columns
+      doc.setFillColor(248, 250, 252);
+      doc.rect(20, yPos, 40, 7, "F");
+      doc.rect(105, yPos, 35, 7, "F");
+
+      // Borders
+      doc.rect(20, yPos, 170, 7);
+      doc.line(60, yPos, 60, yPos + 7);
+      doc.line(105, yPos, 105, yPos + 7);
+      doc.line(140, yPos, 140, yPos + 7);
+
+      doc.setFont("helvetica", "bold");
+      doc.setTextColor(71, 85, 105);
+      doc.text(label1, 23, yPos + 4.8);
+      doc.text(label2, 108, yPos + 4.8);
+
+      doc.setFont("helvetica", "normal");
+      doc.setTextColor(15, 23, 42);
+      doc.text(val1, 63, yPos + 4.8);
+      doc.text(val2, 143, yPos + 4.8);
+    };
+
+    drawMetaRow("No. Agenda", letter.agendaNumber || "-", "Tgl. Diterima", letter.receivedDate ? formatDateIndo(letter.receivedDate) : "-", currentY);
+    currentY += 7;
+    drawMetaRow("Sifat Surat", letter.urgency || "-", "Kategori", letter.category || "-", currentY);
+    currentY += 7;
+    drawMetaRow("No. Surat Asal", letter.letterNumber || "-", "Tgl. Surat Asal", letter.letterDate ? formatDateIndo(letter.letterDate) : "-", currentY);
+    currentY += 7;
+    drawMetaRow("Status Berkas", letter.status || "-", "Diinput Oleh", "Sistem e-Office", currentY);
+
+    currentY += 12;
+
+    // SECTION II: SENDER & SUBJECT DETAILS
+    doc.setFillColor(241, 245, 249);
+    doc.rect(20, currentY, 170, 7, "F");
+    
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(9.5);
+    doc.setTextColor(30, 41, 142);
+    doc.text("II. DETIL PENGIRIM & PERIHAL SURAT", 24, currentY + 5);
+
+    currentY += 10;
+
+    // Sender Details Group Box
+    doc.setDrawColor(203, 213, 225);
+    doc.rect(20, currentY, 170, 34);
+
+    doc.setFontSize(8.5);
+    doc.setFont("helvetica", "bold");
+    doc.setTextColor(71, 85, 105);
+    doc.text("Nama Pengirim / Kontak:", 24, currentY + 5);
+    doc.text("Nama Instansi / Perusahaan:", 24, currentY + 14);
+    doc.text("Isi Ringkasan Perihal:", 24, currentY + 23);
+
+    doc.setFont("helvetica", "normal");
+    doc.setTextColor(15, 23, 42);
+    doc.text(letter.sender || "-", 24, currentY + 9);
+    doc.text(letter.senderInstitution || "-", 24, currentY + 18);
+
+    const subjectTextWrapped = doc.splitTextToSize(letter.subject || "-", 162);
+    doc.text(subjectTextWrapped, 24, currentY + 27);
+
+    currentY += 41;
+
+    // SECTION III: DISPOSITION INSTRUCTIONS LOG
+    doc.setFillColor(241, 245, 249);
+    doc.rect(20, currentY, 170, 7, "F");
+    
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(9.5);
+    doc.setTextColor(30, 41, 142);
+    doc.text("III. INSTRUKSI DISPOSISI & TINDAK LANJUT", 24, currentY + 5);
+
+    currentY += 10;
+
+    const dispositions = letter.dispositions || [];
+    if (dispositions.length === 0) {
+      doc.setDrawColor(226, 232, 240);
+      doc.rect(20, currentY, 170, 16);
+      doc.setFont("helvetica", "italic");
+      doc.setFontSize(8.5);
+      doc.setTextColor(100, 116, 139);
+      doc.text("Belum ada instruksi disposisi terdaftar untuk lembar agenda surat masuk ini.", 24, currentY + 9.5);
+      currentY += 21;
+    } else {
+      dispositions.forEach((disp, idx) => {
+        // Prepare new page if space is low
+        if (currentY > 230) {
+          doc.addPage();
+          currentPage++;
+          currentY = drawLetterhead(currentPage) + 5;
+        }
+
+        // Prepare instruction block
+        doc.setDrawColor(203, 213, 225);
+        doc.setFillColor(248, 250, 252);
+        doc.rect(20, currentY, 170, 28, "F");
+        doc.rect(20, currentY, 170, 28);
+
+        // Header line of individual disposition
+        doc.setFont("helvetica", "bold");
+        doc.setFontSize(8.5);
+        doc.setTextColor(30, 41, 142);
+        doc.text(`Disposisi #${idx + 1} - Ditujukan Kepada: ${disp.targetRole || "Staf"}`, 24, currentY + 5.5);
+
+        doc.setFontSize(7.5);
+        doc.setTextColor(100, 116, 139);
+        doc.text(`Tanggal Disposisi: ${disp.createdAt || "-"}  |  Prioritas: ${disp.priority || "Sedang"}`, 120, currentY + 5.5);
+
+        doc.line(20, currentY + 8, 190, currentY + 8);
+
+        // Instruction notes
+        doc.setFont("helvetica", "normal");
+        doc.setFontSize(8);
+        doc.setTextColor(15, 23, 42);
+        
+        const noteLines = doc.splitTextToSize(disp.notes || "-", 160);
+        doc.text(noteLines, 24, currentY + 12.5);
+
+        // Sender signature line
+        doc.setFont("helvetica", "italic");
+        doc.setFontSize(7.5);
+        doc.setTextColor(71, 85, 105);
+        doc.text(`Dikeluarkan Oleh Pimpinan: ${disp.senderName || "Direksi / Atasan"}`, 24, currentY + 24.5);
+
+        currentY += 32;
+      });
+    }
+
+    // Bottom verification notice & signature placeholder
+    if (currentY > 220) {
+      doc.addPage();
+      currentPage++;
+      currentY = drawLetterhead(currentPage) + 5;
+    }
+
+    currentY += 10;
+    doc.setDrawColor(203, 213, 225);
+    doc.line(20, currentY, 190, currentY);
+
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(7.5);
+    doc.setTextColor(148, 163, 184);
+    doc.text("Lembar dokumen ini merupakan salinan digital resmi dari agenda surat masuk yang tercatat pada Aplikasi e-Office PT. Foresyndo Global Indonesia.", 20, currentY + 5);
+    doc.text("Segala bentuk perubahan atau penyalinan yang tidak sah merupakan tanggung jawab penuh pihak bersangkutan.", 20, currentY + 8.5);
+
+    // Authentic stamp & signature section on right corner
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(8);
+    doc.setTextColor(15, 23, 42);
+    doc.text("Mengetahui,", 150, currentY + 16, { align: "center" });
+    doc.text("Petugas Pengarsip / Sekretaris,", 150, currentY + 20, { align: "center" });
+
+    // Dummy signature dotted line
+    doc.setDrawColor(148, 163, 184);
+    doc.line(130, currentY + 38, 170, currentY + 38);
+    doc.text("( __________________________ )", 150, currentY + 41.5, { align: "center" });
+
+    // Download file trigger
+    doc.save(`SuratMasuk_NoAgenda_${letter.agendaNumber || "Unknown"}.pdf`);
+  };
 
   const runAiAction = async (actionType: "RINGKASAN" | "BALASAN" | "DISPOSISI" | "PDF", letter: LetterIn) => {
     setAiStatus("LOADING");
@@ -398,7 +702,18 @@ export default function SuratMasuk({
           {selectedLetter ? (
             <div className="space-y-4" id="selected-letter-detail">
               <div className="flex justify-between items-center border-b border-slate-100 dark:border-slate-800 pb-3">
-                <h3 className="font-bold text-slate-800 dark:text-white text-sm">Pratinjau Agenda Detail</h3>
+                <div className="flex items-center space-x-2">
+                  <h3 className="font-bold text-slate-800 dark:text-white text-sm">Pratinjau Agenda Detail</h3>
+                  <button 
+                    onClick={() => handleExportPDF(selectedLetter)}
+                    className="flex items-center space-x-1 bg-blue-50 hover:bg-blue-100 dark:bg-blue-950/45 dark:hover:bg-blue-950/90 border border-blue-200 dark:border-blue-900 text-blue-600 dark:text-blue-400 font-bold py-1 px-2.5 rounded text-[10px] transition-all cursor-pointer shadow-xs"
+                    id="btn-unduh-pdf-masuk"
+                    title="Unduh Agenda & Lembar Disposisi PDF"
+                  >
+                    <FileText className="h-3 w-3" />
+                    <span>Format PDF</span>
+                  </button>
+                </div>
                 <button onClick={() => setSelectedLetter(null)} className="text-slate-400 hover:text-slate-600 text-xs font-semibold">Tutup</button>
               </div>
 

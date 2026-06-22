@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from "react";
-import { Plus, Search, FileText, Bot, Send, Check, ShieldCheck, Signature, Sparkles, Printer, UserCheck, Eye, RefreshCw, X, Edit3, QrCode, Award, ShieldAlert, CheckCircle2 } from "lucide-react";
+import { Plus, Search, FileText, Bot, Send, Check, ShieldCheck, Signature, Sparkles, Printer, UserCheck, Eye, RefreshCw, X, Edit3, QrCode, Award, ShieldAlert, CheckCircle2, Download } from "lucide-react";
 import { LetterOut, UserRole, UserProfile, CompanySetting } from "../types";
 import { generateLetterNumber, injectTemplateVariables, generateVerificationQR } from "../utils";
 import { jsPDF } from "jspdf";
@@ -322,6 +322,24 @@ export default function SuratKeluar({
   // Trigger print document
   const triggerPrint = () => {
     window.print();
+  };
+
+  // Download QR Code as premium SVG file
+  const handleDownloadQR = (letter: LetterOut) => {
+    const qrSvgString = generateVerificationQR(
+      `FORSDIG-DOC|id:${letter.id}|vcode:${letter.verificationCode}|status:${letter.status}|signatory:${letter.signatory}`, 
+      300, 
+      300
+    );
+    const blob = new Blob([qrSvgString], { type: "image/svg+xml" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `QR_Verification_${letter.verificationCode}.svg`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
   };
 
   // Format date indonesian helper for PDF formatting
@@ -937,6 +955,7 @@ export default function SuratKeluar({
                         onClick={() => {
                           onUpdateStatus(selectedLetter.id, "Approved Direktur", "Signed and finalized by Director Joko.");
                           setSelectedLetter({...selectedLetter, status: "Approved Direktur", signatureEnabled: true});
+                          alert(`[Approval TTE Berhasil] Surat keluar telah disetujui secara resmi oleh Direktur!\n\nSistem secara otomatis menghasilkan/mengaktifkan QR Code unik (${selectedLetter.verificationCode}) untuk memvalidasi keaslian dokumen secara digital pada lembar cetak maupun file PDF.`);
                         }}
                         className="flex-1 md:flex-none flex items-center justify-center space-x-1.5 bg-purple-600 hover:bg-purple-700 text-white font-semibold py-1.5 px-3 rounded text-xs transition-all"
                         id="btn-approval-direktur"
@@ -1106,7 +1125,17 @@ export default function SuratKeluar({
                       </div>
                     </div>
 
-                    <div className="pt-2.5 border-t border-slate-150 dark:border-slate-800 flex justify-end">
+                    <div className="pt-2.5 border-t border-slate-150 dark:border-slate-800 flex justify-end space-x-2">
+                      <button
+                        type="button"
+                        onClick={() => handleDownloadQR(selectedLetter)}
+                        className="inline-flex items-center space-x-1.5 text-slate-700 dark:text-slate-300 bg-slate-50 hover:bg-slate-100 dark:bg-slate-850 dark:hover:bg-slate-800 font-bold text-[11px] px-3.5 py-1.5 rounded-lg border border-slate-200 dark:border-slate-750 transition-all cursor-pointer shadow-sm active:scale-95"
+                        id="btn-download-qr-code"
+                        title="Unduh file asset QR Code verifikasi (SVG)"
+                      >
+                        <Download className="h-3.5 w-3.5 shrink-0" />
+                        <span>Unduh QR</span>
+                      </button>
                       <button
                         type="button"
                         onClick={() => setIsVerifyModalOpen(true)}
@@ -1663,14 +1692,24 @@ export default function SuratKeluar({
                       }} 
                     />
                   </div>
-                  <div className="space-y-1">
-                    <h5 className="font-bold text-slate-905 dark:text-slate-200 text-sm">Sertifikat Digital Valid</h5>
-                    <p className="text-[11px] text-slate-500 dark:text-slate-400">
-                      Instansi: <span className="font-semibold text-slate-700 dark:text-slate-300">PT. Foresyndo Global Indonesia</span>
-                    </p>
-                    <p className="text-[11px] text-slate-500 dark:text-slate-400">
-                      Status Keluar: <span className="px-1.5 py-0.5 bg-blue-100 dark:bg-blue-950 text-blue-800 dark:text-blue-300 rounded font-mono font-bold text-[9px] uppercase">{selectedLetter.status}</span>
-                    </p>
+                  <div className="space-y-2">
+                    <div>
+                      <h5 className="font-bold text-slate-905 dark:text-slate-200 text-sm">Sertifikat Digital Valid</h5>
+                      <p className="text-[11px] text-slate-500 dark:text-slate-400">
+                        Instansi: <span className="font-semibold text-slate-700 dark:text-slate-300">PT. Foresyndo Global Indonesia</span>
+                      </p>
+                      <p className="text-[11px] text-slate-500 dark:text-slate-400">
+                        Status Keluar: <span className="px-1.5 py-0.5 bg-blue-100 dark:bg-blue-950 text-blue-800 dark:text-blue-300 rounded font-mono font-bold text-[9px] uppercase">{selectedLetter.status}</span>
+                      </p>
+                    </div>
+                    <button
+                      onClick={() => handleDownloadQR(selectedLetter)}
+                      className="flex items-center space-x-1 border border-slate-200 dark:border-slate-800 hover:bg-slate-105 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-300 font-semibold py-1 px-2 rounded text-[10px] transition-all cursor-pointer shadow-xs"
+                      title="Unduh QR Code"
+                    >
+                      <Download className="h-3 w-3" />
+                      <span>Unduh Berkas QR (SVG)</span>
+                    </button>
                   </div>
                 </div>
               </div>

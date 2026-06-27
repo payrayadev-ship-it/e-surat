@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useRef, useEffect } from "react";
 import { Plus, FileText, Calendar, Users, List, Send, MessageSquare, AlertCircle, Eye, CheckCircle, Printer, Sparkles, RefreshCw, Bot, Clock, Mic, MicOff } from "lucide-react";
 import { Memo as MemoType, Meeting, UserRole, UserProfile } from "../types";
 
@@ -28,6 +28,34 @@ export default function MemosMeetings({
   const [memoContent, setMemoContent] = useState("");
   const [memoRecipient, setMemoRecipient] = useState("Staff");
   const [isListening, setIsListening] = useState(false);
+  const recognitionRef = useRef<any>(null);
+
+  // Stop recognition on unmount
+  useEffect(() => {
+    return () => {
+      if (recognitionRef.current) {
+        try {
+          recognitionRef.current.stop();
+        } catch (e) {
+          console.error("Cleanup speech error:", e);
+        }
+      }
+    };
+  }, []);
+
+  // Stop recognition if memo modal is closed
+  useEffect(() => {
+    if (!isMemoOpen && isListening) {
+      if (recognitionRef.current) {
+        try {
+          recognitionRef.current.stop();
+        } catch (e) {
+          console.error(e);
+        }
+      }
+      setIsListening(false);
+    }
+  }, [isMemoOpen, isListening]);
 
   // Form states - Meeting
   const [isMeetOpen, setIsMeetOpen] = useState(false);
@@ -162,9 +190,9 @@ PENTING: Respon Anda HANYA berupa text string JSON valid tanpa tambahan teks pen
   };
 
   const closeMemoModal = () => {
-    if (isListening && (window as any).globalSpeechRecognition) {
+    if (isListening && recognitionRef.current) {
       try {
-        (window as any).globalSpeechRecognition.stop();
+        recognitionRef.current.stop();
       } catch (e) {
         console.error(e);
       }
@@ -174,6 +202,8 @@ PENTING: Respon Anda HANYA berupa text string JSON valid tanpa tambahan teks pen
   };
 
   const toggleSpeechRecognition = () => {
+    if (typeof window === "undefined") return;
+
     const SpeechRecognition =
       (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
 
@@ -183,9 +213,9 @@ PENTING: Respon Anda HANYA berupa text string JSON valid tanpa tambahan teks pen
     }
 
     if (isListening) {
-      if ((window as any).globalSpeechRecognition) {
+      if (recognitionRef.current) {
         try {
-          (window as any).globalSpeechRecognition.stop();
+          recognitionRef.current.stop();
         } catch (e) {
           console.error(e);
         }
@@ -194,45 +224,54 @@ PENTING: Respon Anda HANYA berupa text string JSON valid tanpa tambahan teks pen
       return;
     }
 
-    const rec = new SpeechRecognition();
-    rec.continuous = true;
-    rec.interimResults = false;
-    rec.lang = "id-ID";
+    try {
+      const rec = new SpeechRecognition();
+      rec.continuous = true;
+      rec.interimResults = false;
+      rec.lang = "id-ID";
 
-    rec.onstart = () => {
-      setIsListening(true);
-    };
+      rec.onstart = () => {
+        setIsListening(true);
+      };
 
-    rec.onresult = (event: any) => {
-      let speechToText = "";
-      for (let i = event.resultIndex; i < event.results.length; i++) {
-        if (event.results[i].isFinal) {
-          speechToText += event.results[i][0].transcript;
+      rec.onresult = (event: any) => {
+        let speechToText = "";
+        for (let i = event.resultIndex; i < event.results.length; i++) {
+          if (event.results[i].isFinal) {
+            speechToText += event.results[i][0].transcript;
+          }
         }
-      }
-      if (speechToText) {
-        setMemoContent((prev) => {
-          const cleanedText = speechToText.trim();
-          if (!prev) return cleanedText;
-          return prev.trim() + " " + cleanedText;
-        });
-      }
-    };
+        if (speechToText) {
+          setMemoContent((prev) => {
+            const cleanedText = speechToText.trim();
+            if (!prev) return cleanedText;
+            return prev.trim() + " " + cleanedText;
+          });
+        }
+      };
 
-    rec.onerror = (event: any) => {
-      console.error("Speech Recognition Error:", event.error);
-      if (event.error === "not-allowed") {
-        alert("Akses mikrofon ditolak. Silakan aktifkan izin mikrofon di browser Anda.");
-      }
+      rec.onerror = (event: any) => {
+        console.error("Speech Recognition Error:", event.error);
+        if (event.error === "not-allowed") {
+          alert("Akses mikrofon ditolak. Silakan aktifkan izin mikrofon di browser Anda.");
+        } else if (event.error === "no-speech") {
+          console.log("No speech detected.");
+        } else {
+          alert(`Terjadi kesalahan deteksi suara: ${event.error}`);
+        }
+        setIsListening(false);
+      };
+
+      rec.onend = () => {
+        setIsListening(false);
+      };
+
+      recognitionRef.current = rec;
+      rec.start();
+    } catch (err) {
+      console.error("Failed to start speech recognition:", err);
       setIsListening(false);
-    };
-
-    rec.onend = () => {
-      setIsListening(false);
-    };
-
-    (window as any).globalSpeechRecognition = rec;
-    rec.start();
+    }
   };
 
   const generateMeetingInsightsWithAI = async () => {

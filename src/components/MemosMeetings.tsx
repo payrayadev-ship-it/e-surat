@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { Plus, FileText, Calendar, Users, List, Send, MessageSquare, AlertCircle, Eye, CheckCircle, Printer, Sparkles, RefreshCw, Bot, Clock } from "lucide-react";
+import { Plus, FileText, Calendar, Users, List, Send, MessageSquare, AlertCircle, Eye, CheckCircle, Printer, Sparkles, RefreshCw, Bot, Clock, Mic, MicOff } from "lucide-react";
 import { Memo as MemoType, Meeting, UserRole, UserProfile } from "../types";
 
 interface MemosMeetingsProps {
@@ -27,6 +27,7 @@ export default function MemosMeetings({
   const [memoSubject, setMemoSubject] = useState("");
   const [memoContent, setMemoContent] = useState("");
   const [memoRecipient, setMemoRecipient] = useState("Staff");
+  const [isListening, setIsListening] = useState(false);
 
   // Form states - Meeting
   const [isMeetOpen, setIsMeetOpen] = useState(false);
@@ -160,6 +161,80 @@ PENTING: Respon Anda HANYA berupa text string JSON valid tanpa tambahan teks pen
     }
   };
 
+  const closeMemoModal = () => {
+    if (isListening && (window as any).globalSpeechRecognition) {
+      try {
+        (window as any).globalSpeechRecognition.stop();
+      } catch (e) {
+        console.error(e);
+      }
+      setIsListening(false);
+    }
+    setIsMemoOpen(false);
+  };
+
+  const toggleSpeechRecognition = () => {
+    const SpeechRecognition =
+      (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+
+    if (!SpeechRecognition) {
+      alert("Browser Anda tidak mendukung Web Speech API (Voice-to-Text). Silakan gunakan Google Chrome, Microsoft Edge, atau Safari.");
+      return;
+    }
+
+    if (isListening) {
+      if ((window as any).globalSpeechRecognition) {
+        try {
+          (window as any).globalSpeechRecognition.stop();
+        } catch (e) {
+          console.error(e);
+        }
+      }
+      setIsListening(false);
+      return;
+    }
+
+    const rec = new SpeechRecognition();
+    rec.continuous = true;
+    rec.interimResults = false;
+    rec.lang = "id-ID";
+
+    rec.onstart = () => {
+      setIsListening(true);
+    };
+
+    rec.onresult = (event: any) => {
+      let speechToText = "";
+      for (let i = event.resultIndex; i < event.results.length; i++) {
+        if (event.results[i].isFinal) {
+          speechToText += event.results[i][0].transcript;
+        }
+      }
+      if (speechToText) {
+        setMemoContent((prev) => {
+          const cleanedText = speechToText.trim();
+          if (!prev) return cleanedText;
+          return prev.trim() + " " + cleanedText;
+        });
+      }
+    };
+
+    rec.onerror = (event: any) => {
+      console.error("Speech Recognition Error:", event.error);
+      if (event.error === "not-allowed") {
+        alert("Akses mikrofon ditolak. Silakan aktifkan izin mikrofon di browser Anda.");
+      }
+      setIsListening(false);
+    };
+
+    rec.onend = () => {
+      setIsListening(false);
+    };
+
+    (window as any).globalSpeechRecognition = rec;
+    rec.start();
+  };
+
   const generateMeetingInsightsWithAI = async () => {
     if (!meetTitle || !meetAgenda) {
       alert("Silakan lengkapi Judul/Topik Rapat dan Agenda Utama terlebih dahulu!");
@@ -213,7 +288,7 @@ PENTING: Respon Anda HANYA berupa text string JSON valid tanpa tambahan teks pen
     setMemoNo("");
     setMemoSubject("");
     setMemoContent("");
-    setIsMemoOpen(false);
+    closeMemoModal();
   };
 
   const submitMeeting = (e: React.FormEvent) => {
@@ -432,7 +507,7 @@ PENTING: Respon Anda HANYA berupa text string JSON valid tanpa tambahan teks pen
           <div className="bg-white dark:bg-slate-900 border border-slate-250 dark:border-slate-800 rounded-xl shadow-xl w-full max-w-md overflow-hidden animate-in fade-in zoom-in-95 duration-200">
             <div className="p-4 bg-blue-600 text-white font-bold text-base flex justify-between items-center">
               <span>Formulir Memo Dinas Internal</span>
-              <button onClick={() => setIsMemoOpen(false)} className="text-white/80 hover:text-white"><Printer className="hidden md:inline h-5 w-5" />X</button>
+              <button onClick={closeMemoModal} className="text-white/80 hover:text-white"><Printer className="hidden md:inline h-5 w-5" />X</button>
             </div>
 
             <form onSubmit={submitMemo} className="p-5 space-y-4 text-xs md:text-sm">
@@ -474,36 +549,69 @@ PENTING: Respon Anda HANYA berupa text string JSON valid tanpa tambahan teks pen
               </div>
 
               <div>
-                <div className="flex justify-between items-center mb-1">
+                <div className="flex justify-between items-center mb-1 flex-wrap gap-2">
                   <label className="block text-slate-500 font-semibold">Isi & Amanat Memo Dinas</label>
-                  <button
-                    type="button"
-                    onClick={generateMemoContentWithAI}
-                    disabled={generatingAI}
-                    className="text-[10px] text-indigo-600 dark:text-indigo-400 font-bold flex items-center space-x-1 hover:underline cursor-pointer disabled:opacity-50"
-                  >
-                    {generatingAI ? (
-                      <RefreshCw className="h-3 w-3 animate-spin" />
-                    ) : (
-                      <Sparkles className="h-3 w-3" />
-                    )}
-                    <span>Draft Otomatis via AI</span>
-                  </button>
+                  <div className="flex items-center space-x-3">
+                    <button
+                      type="button"
+                      onClick={toggleSpeechRecognition}
+                      className={`text-[10px] font-bold flex items-center space-x-1 hover:underline cursor-pointer transition-colors ${
+                        isListening 
+                          ? "text-rose-600 dark:text-rose-450 animate-pulse bg-rose-50 dark:bg-rose-950/30 px-2 py-0.5 rounded-full border border-rose-200/50" 
+                          : "text-blue-600 dark:text-blue-400"
+                      }`}
+                    >
+                      {isListening ? (
+                        <>
+                          <span className="w-1.5 h-1.5 rounded-full bg-rose-600 dark:bg-rose-400 animate-ping inline-block"></span>
+                          <MicOff className="h-3 w-3" />
+                          <span>Stop</span>
+                        </>
+                      ) : (
+                        <>
+                          <Mic className="h-3 w-3" />
+                          <span>Dikte Suara</span>
+                        </>
+                      )}
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={generateMemoContentWithAI}
+                      disabled={generatingAI}
+                      className="text-[10px] text-indigo-600 dark:text-indigo-400 font-bold flex items-center space-x-1 hover:underline cursor-pointer disabled:opacity-50"
+                    >
+                      {generatingAI ? (
+                        <RefreshCw className="h-3 w-3 animate-spin" />
+                      ) : (
+                        <Sparkles className="h-3 w-3" />
+                      )}
+                      <span>Draft Otomatis via AI</span>
+                    </button>
+                  </div>
                 </div>
                 <textarea 
                   required
-                  placeholder="Ketik rincian memo kedinasan secara formal..."
+                  placeholder={isListening ? "Silakan bicara sekarang, ucapan Anda diterjemahkan ke teks secara langsung..." : "Ketik rincian memo kedinasan secara formal..."}
                   rows={5}
                   value={memoContent}
                   onChange={(e) => setMemoContent(e.target.value)}
-                  className="w-full p-2 border border-slate-200 dark:border-slate-800 rounded bg-slate-50 dark:bg-slate-950 text-slate-805 dark:text-slate-100 focus:outline-blue-500"
+                  className={`w-full p-2 border rounded bg-slate-50 dark:bg-slate-950 text-slate-805 dark:text-slate-100 focus:outline-blue-500 transition-all ${
+                    isListening ? "border-rose-400 dark:border-rose-900 ring-2 ring-rose-500/15" : "border-slate-200 dark:border-slate-800"
+                  }`}
                 />
+                {isListening && (
+                  <p className="text-[10px] text-rose-500 dark:text-rose-400 font-semibold animate-pulse mt-1 flex items-center gap-1">
+                    <Mic className="h-3 w-3" />
+                    <span>Mikrofon aktif. Bicaralah dalam Bahasa Indonesia...</span>
+                  </p>
+                )}
               </div>
 
               <div className="flex justify-end space-x-2 pt-4 border-t border-slate-100 dark:border-slate-800">
                 <button 
                   type="button" 
-                  onClick={() => setIsMemoOpen(false)}
+                  onClick={closeMemoModal}
                   className="px-4 py-2 border border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-400 rounded hover:bg-slate-100"
                 >
                   Batal

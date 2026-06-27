@@ -1,9 +1,11 @@
 import React, { useState, useEffect } from "react";
 import { 
   Building2, LayoutDashboard, Mail, Send, MessageSquare, Archive, Settings, 
-  LogOut, Sun, Moon, Sparkles, User, ShieldAlert, CheckCircle, Bell, RefreshCw, Plus
+  LogOut, Sun, Moon, Sparkles, User, ShieldAlert, CheckCircle, Bell, RefreshCw, Plus,
+  Search, X, ExternalLink, FileDown, Calendar, Tag, Hash, Paperclip, ChevronRight, CornerDownRight, CheckCircle2, AlertTriangle
 } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
+import { jsPDF } from "jspdf";
 
 import { 
   LetterIn, LetterOut, Disposition, Memo, Meeting, 
@@ -21,6 +23,7 @@ import SuratKeluar from "./components/SuratKeluar";
 import MemosMeetings from "./components/MemosMeetings";
 import ArsipDigital from "./components/ArsipDigital";
 import SettingsAudit from "./components/SettingsAudit";
+import AIKontrak from "./components/AIKontrak";
 
 // Mock Active profiles for quick demo selection
 const WORKSPACE_USERS: UserProfile[] = [
@@ -120,6 +123,453 @@ export default function App() {
   });
 
   const [activeTab, setActiveTab] = useState<string>("dashboard");
+
+  // Global Search states
+  const [searchQuery, setSearchQuery] = useState("");
+  const [isSearchFocused, setIsSearchFocused] = useState(false);
+  const [selectedSearchLetter, setSelectedSearchLetter] = useState<{ letter: any; type: "in" | "out" } | null>(null);
+
+  const formatIndoDateGlobal = (dateStr: string) => {
+    try {
+      const d = new Date(dateStr);
+      if (isNaN(d.getTime())) return dateStr || "-";
+      return d.toLocaleDateString("id-ID", {
+        day: "numeric",
+        month: "long",
+        year: "numeric"
+      });
+    } catch {
+      return dateStr || "-";
+    }
+  };
+
+  const handleGlobalExportPDF = (letter: any, type: "in" | "out") => {
+    if (!letter) return;
+    
+    const doc = new jsPDF({
+      orientation: "portrait",
+      unit: "mm",
+      format: "a4"
+    });
+
+    const pageHeight = 297;
+    const pageWidth = 210;
+    const leftMargin = 20;
+    const rightMargin = 190;
+    const contentWidth = 170;
+
+    const drawLetterhead = (pageNumber: number) => {
+      // Draw Corporate Letter Head Logo
+      doc.setFillColor(30, 41, 142); // Navy Blue
+      doc.roundedRect(20, 15, 14, 14, 2, 2, "F");
+      
+      doc.setFillColor(234, 179, 8); // Golden Accent Accent Dot
+      doc.circle(23, 26, 1.5, "F");
+
+      // Logo text FGI
+      doc.setTextColor(255, 255, 255);
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(10);
+      doc.text("FGI", 26, 23.5, { align: "center" });
+
+      // Company Name and Details
+      doc.setTextColor(15, 23, 42); // Navy / Dark slate
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(14);
+      doc.text(companySetting.companyName.toUpperCase(), 38, 19.5);
+
+      doc.setTextColor(71, 85, 105); // Slate Dark Grey
+      doc.setFont("helvetica", "normal");
+      doc.setFontSize(8.5);
+      
+      const addrWithFormat = companySetting.companyAddress;
+      const addressLines = doc.splitTextToSize(addrWithFormat, 150);
+      doc.text(addressLines, 38, 24);
+      
+      const detailsLineY = 24 + (addressLines.length * 3.8);
+      
+      doc.setFont("helvetica", "bold");
+      doc.setTextColor(30, 41, 142);
+      doc.text("e-Office & Digital Signature Hub", 38, detailsLineY);
+      
+      doc.setFont("helvetica", "normal");
+      doc.setTextColor(100, 116, 139);
+      doc.text(` |  Telp: ${companySetting.companyPhone}  |  Email: ${companySetting.companyEmail}`, 85, detailsLineY);
+
+      // Premium Double Divider borders
+      const lineY = detailsLineY + 3.5;
+      doc.setDrawColor(30, 41, 142);
+      doc.setLineWidth(1.0);
+      doc.line(20, lineY, 190, lineY);
+      
+      // Thin slate line
+      doc.setDrawColor(148, 163, 184);
+      doc.setLineWidth(0.3);
+      doc.line(20, lineY + 0.95, 190, lineY + 0.95);
+
+      // Page numbering indicator
+      doc.setFont("helvetica", "normal");
+      doc.setFontSize(7.5);
+      doc.setTextColor(148, 163, 184);
+      doc.text(`Hal ${pageNumber}`, 190, 287, { align: "right" });
+      
+      return lineY + 5;
+    };
+
+    let currentY = drawLetterhead(1);
+    let currentPage = 1;
+
+    if (type === "in") {
+      // TITLE: LEMBAR DISPOSISI & AGENDA SURAT MASUK
+      currentY += 5;
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(12);
+      doc.setTextColor(15, 23, 42);
+      doc.text("LEMBAR AGENDA & DISPOSISI SURAT MASUK", 105, currentY, { align: "center" });
+
+      doc.setFont("helvetica", "normal");
+      doc.setFontSize(8);
+      doc.setTextColor(100, 116, 139);
+      doc.text(`Dicetak secara resmi pada: ${new Date().toLocaleDateString('id-ID', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}`, 105, currentY + 4.5, { align: "center" });
+
+      currentY += 12;
+
+      // SECTION I: AGENDA REGISTRATION
+      doc.setFillColor(241, 245, 249);
+      doc.rect(20, currentY, 170, 7, "F");
+      
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(9.5);
+      doc.setTextColor(30, 41, 142);
+      doc.text("I. INFORMASI AGENDA KANTOR & REGISTRASI", 24, currentY + 5);
+
+      currentY += 10;
+
+      // Metadata Grid (Table-like structure)
+      doc.setFontSize(8.5);
+      doc.setDrawColor(226, 232, 240);
+      doc.setLineWidth(0.25);
+
+      const drawMetaRow = (label1: string, val1: string, label2: string, val2: string, yPos: number) => {
+        doc.setFillColor(248, 250, 252);
+        doc.rect(20, yPos, 40, 7, "F");
+        doc.rect(105, yPos, 35, 7, "F");
+
+        doc.rect(20, yPos, 170, 7);
+        doc.line(60, yPos, 60, yPos + 7);
+        doc.line(105, yPos, 105, yPos + 7);
+        doc.line(140, yPos, 140, yPos + 7);
+
+        doc.setFont("helvetica", "bold");
+        doc.setTextColor(71, 85, 105);
+        doc.text(label1, 23, yPos + 4.8);
+        doc.text(label2, 108, yPos + 4.8);
+
+        doc.setFont("helvetica", "normal");
+        doc.setTextColor(15, 23, 42);
+        doc.text(val1, 63, yPos + 4.8);
+        doc.text(val2, 143, yPos + 4.8);
+      };
+
+      drawMetaRow("No. Agenda", letter.agendaNumber || "-", "Tgl. Diterima", letter.receivedDate ? formatIndoDateGlobal(letter.receivedDate) : "-", currentY);
+      currentY += 7;
+      drawMetaRow("Sifat Surat", letter.urgency || "-", "Kategori", letter.category || "-", currentY);
+      currentY += 7;
+      drawMetaRow("No. Surat Asal", letter.letterNumber || "-", "Tgl. Surat Asal", letter.letterDate ? formatIndoDateGlobal(letter.letterDate) : "-", currentY);
+      currentY += 7;
+      drawMetaRow("Status Berkas", letter.status || "-", "Diinput Oleh", "Sistem e-Office", currentY);
+
+      currentY += 12;
+
+      // SECTION II: SENDER & SUBJECT DETAILS
+      doc.setFillColor(241, 245, 249);
+      doc.rect(20, currentY, 170, 7, "F");
+      
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(9.5);
+      doc.setTextColor(30, 41, 142);
+      doc.text("II. DETIL PENGIRIM & PERIHAL SURAT", 24, currentY + 5);
+
+      currentY += 10;
+
+      // Sender Details Group Box
+      doc.setDrawColor(203, 213, 225);
+      doc.rect(20, currentY, 170, 34);
+
+      doc.setFontSize(8.5);
+      doc.setFont("helvetica", "bold");
+      doc.setTextColor(71, 85, 105);
+      doc.text("Nama Pengirim / Kontak:", 24, currentY + 5);
+      doc.text("Nama Instansi / Perusahaan:", 24, currentY + 14);
+      doc.text("Isi Ringkasan Perihal:", 24, currentY + 23);
+
+      doc.setFont("helvetica", "normal");
+      doc.setTextColor(15, 23, 42);
+      doc.text(letter.sender || "-", 24, currentY + 9);
+      doc.text(letter.senderInstitution || "-", 24, currentY + 18);
+
+      const subjectTextWrapped = doc.splitTextToSize(letter.subject || "-", 162);
+      doc.text(subjectTextWrapped, 24, currentY + 27);
+
+      currentY += 41;
+
+      // SECTION III: DISPOSITION INSTRUCTIONS LOG
+      doc.setFillColor(241, 245, 249);
+      doc.rect(20, currentY, 170, 7, "F");
+      
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(9.5);
+      doc.setTextColor(30, 41, 142);
+      doc.text("III. INSTRUKSI DISPOSISI & TINDAK LANJUT", 24, currentY + 5);
+
+      currentY += 10;
+
+      const dispositionsList = letter.dispositions || [];
+      if (dispositionsList.length === 0) {
+        doc.setDrawColor(226, 232, 240);
+        doc.rect(20, currentY, 170, 16);
+        doc.setFont("helvetica", "italic");
+        doc.setFontSize(8.5);
+        doc.setTextColor(100, 116, 139);
+        doc.text("Belum ada instruksi disposisi terdaftar untuk lembar agenda surat masuk ini.", 24, currentY + 9.5);
+        currentY += 21;
+      } else {
+        dispositionsList.forEach((disp: any, idx: number) => {
+          if (currentY > 230) {
+            doc.addPage();
+            currentPage++;
+            currentY = drawLetterhead(currentPage) + 5;
+          }
+
+          doc.setDrawColor(203, 213, 225);
+          doc.setFillColor(248, 250, 252);
+          doc.rect(20, currentY, 170, 28, "F");
+          doc.rect(20, currentY, 170, 28);
+
+          doc.setFont("helvetica", "bold");
+          doc.setFontSize(8.5);
+          doc.setTextColor(30, 41, 142);
+          doc.text(`DISPOSISI #${idx + 1} - Ditujukan Kepada: ${disp.targetRole}`, 24, currentY + 5.5);
+
+          doc.setFont("helvetica", "normal");
+          doc.setFontSize(7.5);
+          doc.setTextColor(100, 116, 139);
+          doc.text(`Dari Pimpinan: ${disp.senderName}  |  Prioritas: ${disp.priority}  |  Tgl: ${formatIndoDateGlobal(disp.createdAt)}`, 24, currentY + 9.5);
+
+          // Divider inside card
+          doc.setDrawColor(226, 232, 240);
+          doc.line(24, currentY + 11.5, 186, currentY + 11.5);
+
+          // Notes body
+          doc.setFont("helvetica", "bold");
+          doc.setTextColor(71, 85, 105);
+          doc.text("Petunjuk / Instruksi Khusus:", 24, currentY + 16);
+
+          doc.setFont("times", "italic");
+          doc.setFontSize(9);
+          doc.setTextColor(15, 23, 42);
+          const dispNotesWrapped = doc.splitTextToSize(disp.notes || "-", 160);
+          doc.text(dispNotesWrapped, 24, currentY + 20.5);
+
+          currentY += 33;
+        });
+      }
+    } else {
+      // OUTGOING LETTER EXPORT
+      const metaY = currentY + 5;
+      doc.setTextColor(15, 23, 42); // Dark Charcoal
+      doc.setFont("helvetica", "normal");
+      doc.setFontSize(10);
+      const dateOutput = `Jakarta, ${letter.letterDate ? formatIndoDateGlobal(letter.letterDate) : formatIndoDateGlobal(new Date().toISOString())}`;
+      doc.text(dateOutput, 190, metaY, { align: "right" });
+
+      doc.setFont("helvetica", "bold");
+      doc.text("Nomor :", 20, metaY);
+      doc.text("Sifat  :", 20, metaY + 5.5);
+      doc.text("Hal    :", 20, metaY + 11);
+
+      doc.setFont("courier", "bold");
+      doc.setFontSize(10.5);
+      doc.setTextColor(30, 41, 142);
+      doc.text(letter.letterNumber || "-", 36, metaY);
+      
+      doc.setFont("helvetica", "normal");
+      doc.setFontSize(10);
+      doc.setTextColor(51, 65, 85);
+      doc.text("Biasa / Terbuka", 36, metaY + 5.5);
+      
+      doc.setFont("helvetica", "bold");
+      doc.setTextColor(15, 23, 42);
+      const subjectWrapped = doc.splitTextToSize(letter.subject || "-", 105);
+      doc.text(subjectWrapped, 36, metaY + 11);
+
+      const recipientY = metaY + 13 + (subjectWrapped.length * 4.8);
+      doc.setFont("helvetica", "normal");
+      doc.setFontSize(10);
+      doc.setTextColor(71, 85, 105);
+      doc.text("Kepada Yth,", 20, recipientY);
+
+      doc.setFont("helvetica", "bold");
+      doc.setTextColor(15, 23, 42);
+      doc.text(letter.recipient || "-", 20, recipientY + 5);
+
+      doc.setFont("helvetica", "normal");
+      doc.setTextColor(51, 65, 85);
+      doc.text(letter.recipientInstitution || "-", 20, recipientY + 9.5);
+      doc.text("Di tempat", 20, recipientY + 14);
+
+      let bodyY = recipientY + 22;
+      doc.setFont("times", "normal");
+      doc.setFontSize(11);
+      doc.setTextColor(30, 41, 59);
+
+      // Simple template replacements
+      let rawContent = letter.content || "";
+      const replacements = {
+        nomor_surat: letter.letterNumber || "-",
+        tanggal: letter.letterDate ? formatIndoDateGlobal(letter.letterDate) : formatIndoDateGlobal(new Date().toISOString()),
+        nama_penerima: letter.recipient || "-",
+        alamat: letter.recipientInstitution || "-",
+        jabatan: letter.signatory || "-",
+        perihal: letter.subject || "-",
+        nama_direktur: letter.signatory || "-"
+      };
+      
+      Object.entries(replacements).forEach(([key, val]) => {
+        const regex = new RegExp(`\\[${key}\\]|\\{\\{${key}\\}\\}`, "gi");
+        rawContent = rawContent.replace(regex, val);
+      });
+
+      const paragraphs = rawContent.split(/\n+/).map((p: string) => p.trim()).filter(Boolean);
+      const paragraphGap = 6;
+      const footerSafeZoneY = 210;
+
+      doc.setTextColor(15, 23, 42);
+
+      for (let i = 0; i < paragraphs.length; i++) {
+        const pText = paragraphs[i];
+        const pWrappedLines = doc.splitTextToSize(pText, contentWidth);
+        const pHeight = pWrappedLines.length * 5.2;
+
+        if (bodyY + pHeight > (currentPage === 1 ? footerSafeZoneY : 240)) {
+          doc.addPage();
+          currentPage++;
+          bodyY = drawLetterhead(currentPage) + 12;
+          doc.setFont("times", "normal");
+          doc.setFontSize(11);
+          doc.setTextColor(15, 23, 42);
+        }
+
+        doc.text(pText, leftMargin, bodyY, {
+          align: "justify",
+          maxWidth: contentWidth,
+          lineHeightFactor: 1.35
+        });
+        bodyY += pHeight + paragraphGap;
+      }
+
+      let footerY = 228;
+      if (bodyY > 218) {
+        doc.addPage();
+        currentPage++;
+        let finalHeaderY = drawLetterhead(currentPage);
+        footerY = finalHeaderY + 25;
+      }
+
+      // Draw modern background card for authenticity code
+      const qrBoxSize = 25;
+      doc.setFillColor(248, 250, 252);
+      doc.setDrawColor(203, 213, 225);
+      doc.setLineWidth(0.3);
+      doc.roundedRect(20, footerY - 2, 78, qrBoxSize + 8, 2, 2, "FD");
+
+      // Simple QR drawer pattern
+      const qrCodeVal = letter.verificationCode || `TTE-${Date.now()}`;
+      let hash = 0;
+      for (let i = 0; i < qrCodeVal.length; i++) {
+        hash = qrCodeVal.charCodeAt(i) + ((hash << 5) - hash);
+      }
+      const qrSize = 15;
+      const cellWidth = qrBoxSize / qrSize;
+
+      doc.setFillColor(30, 41, 142);
+      for (let r = 0; r < qrSize; r++) {
+        for (let c = 0; c < qrSize; c++) {
+          let active = false;
+          // check anchors
+          const isPosAnchor = (row: number, col: number) => {
+            if (row < 4 && col < 4) return true;
+            if (row < 4 && col >= qrSize - 4) return true;
+            if (row >= qrSize - 4 && col < 4) return true;
+            return false;
+          };
+          const isPosAnchorBorder = (row: number, col: number) => {
+            if ((row === 1 || row === 2) && (col === 1 || col === 2)) return false;
+            if ((row === 1 || row === 2) && (col === qrSize - 2 || col === qrSize - 3)) return false;
+            if ((row === qrSize - 2 || row === qrSize - 3) && (col === 1 || col === 2)) return false;
+            return isPosAnchor(row, col);
+          };
+
+          if (isPosAnchor(r, c)) {
+            active = isPosAnchorBorder(r, c);
+          } else {
+            const cellHash = Math.abs(Math.sin(hash + r * 17 + c * 31));
+            active = cellHash > 0.45;
+          }
+
+          if (active) {
+            doc.rect(24 + (c * cellWidth), footerY + (r * cellWidth) + 1.5, cellWidth - 0.25, cellWidth - 0.25, "F");
+          }
+        }
+      }
+
+      // Text credentials
+      doc.setTextColor(30, 41, 142);
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(8);
+      doc.text("SECURITY CHECK VERIFIED", 54, footerY + 5);
+
+      doc.setFont("helvetica", "normal");
+      doc.setFontSize(7.5);
+      doc.setTextColor(100, 116, 139);
+      doc.text("Valid Digital Signature", 54, footerY + 9);
+      
+      doc.setFont("courier", "bold");
+      doc.setFontSize(7.5);
+      doc.setTextColor(51, 65, 85);
+      doc.text(qrCodeVal, 54, footerY + 13.5);
+
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(7);
+      doc.setTextColor(16, 185, 129);
+      doc.text("✓ TERVERIFIKASI SISTEM", 54, footerY + 18.5);
+
+      // Digital signee text
+      doc.setTextColor(15, 23, 42);
+      doc.setFont("helvetica", "normal");
+      doc.setFontSize(9.5);
+      doc.text("Hormat kami,", 120, footerY + 1);
+      doc.setFont("helvetica", "bold");
+      doc.text(companySetting.companyName || "PT Foresyndo Global Indonesia", 120, footerY + 5.5);
+
+      doc.setDrawColor(30, 41, 142);
+      doc.setLineWidth(0.6);
+      doc.line(120, footerY + 15, 180, footerY + 15);
+
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(9.5);
+      doc.setTextColor(15, 23, 42);
+      doc.text(letter.signatory || "Direktur Utama", 120, footerY + 19.5);
+      
+      doc.setFont("helvetica", "normal");
+      doc.setFontSize(8.5);
+      doc.setTextColor(100, 116, 139);
+      doc.text("Direktur Penandatangan TTE", 120, footerY + 23.5);
+    }
+
+    addAuditLog(`Mengunduh berkas surat [No: ${letter.letterNumber}] dari Quick View Global Search`, "Cetak Surat");
+    doc.save(`FGI_Surat_${(letter.letterNumber || "doc").replace(/[^a-zA-Z0-9]/g, "_")}.pdf`);
+  };
 
   // Form states login
   const [typedEmail, setTypedEmail] = useState("");
@@ -371,6 +821,13 @@ export default function App() {
             onClearAuditLogs={() => setAuditLogs([])}
           />
         );
+      case "ai_kontrak":
+        return (
+          <AIKontrak 
+            currentRole={currentUser.role}
+            currentUser={currentUser}
+          />
+        );
       default:
         return <div>Dashboard Under Active Refactoring</div>;
     }
@@ -482,6 +939,32 @@ export default function App() {
   }
 
   // Active Main dashboard page layout
+  const matchedIn = searchQuery.trim() 
+    ? lettersIn.filter(l => 
+        l.subject.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        l.letterNumber.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        (l.agendaNumber && l.agendaNumber.toLowerCase().includes(searchQuery.toLowerCase())) ||
+        (l.sender && l.sender.toLowerCase().includes(searchQuery.toLowerCase())) ||
+        (l.senderInstitution && l.senderInstitution.toLowerCase().includes(searchQuery.toLowerCase())) ||
+        (l.category && l.category.toLowerCase().includes(searchQuery.toLowerCase())) ||
+        (l.urgency && l.urgency.toLowerCase().includes(searchQuery.toLowerCase()))
+      )
+    : [];
+
+  const matchedOut = searchQuery.trim()
+    ? lettersOut.filter(l => 
+        l.subject.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        l.letterNumber.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        (l.recipient && l.recipient.toLowerCase().includes(searchQuery.toLowerCase())) ||
+        (l.recipientInstitution && l.recipientInstitution.toLowerCase().includes(searchQuery.toLowerCase())) ||
+        (l.category && l.category.toLowerCase().includes(searchQuery.toLowerCase())) ||
+        (l.content && l.content.toLowerCase().includes(searchQuery.toLowerCase())) ||
+        (l.signatory && l.signatory.toLowerCase().includes(searchQuery.toLowerCase()))
+      )
+    : [];
+
+  const totalMatches = matchedIn.length + matchedOut.length;
+
   const getTabLabel = () => {
     switch (activeTab) {
       case "dashboard": return "Dashboard Overview";
@@ -490,6 +973,7 @@ export default function App() {
       case "memos": return "Memo & Notulen Rapat";
       case "arsip": return "Cabinet Digital";
       case "settings": return "Sistem Pengaturan";
+      case "ai_kontrak": return "AI Kontrak & Legal Advisor";
       default: return "Sistem Administrasi";
     }
   };
@@ -575,6 +1059,19 @@ export default function App() {
               <span>Arsip Digital</span>
             </button>
 
+            {/* AI Kontrak Tab */}
+            <button 
+              onClick={() => setActiveTab("ai_kontrak")}
+              className={`w-full flex items-center space-x-3 px-3 py-2 rounded-lg text-xs font-semibold text-left transition-all ${
+                activeTab === "ai_kontrak" ? "bg-blue-800 text-white font-bold" : "text-slate-350 hover:text-white hover:bg-blue-800/50"
+              }`}
+              id="sidebar-nav-ai-kontrak"
+            >
+              <Sparkles className="h-4.5 w-4.5 shrink-0 text-amber-400 animate-pulse" />
+              <span className="flex-1">AI Kontrak & Legal</span>
+              <span className="text-[9px] bg-indigo-600 text-white font-extrabold px-1.5 py-0.5 rounded font-sans uppercase scale-95 tracking-wide">AI</span>
+            </button>
+
             {/* Settings Tab */}
             <button 
               onClick={() => setActiveTab("settings")}
@@ -618,12 +1115,134 @@ export default function App() {
             <span className="font-medium text-xs md:text-sm text-slate-800 dark:text-white">{getTabLabel()}</span>
           </div>
           <div className="flex items-center gap-6">
-            <div className="relative hidden md:block">
-              <input 
-                type="text" 
-                placeholder="Cari dokumen..." 
-                className="bg-slate-100 dark:bg-slate-950 border-none rounded-full py-1.5 px-4 text-xs w-64 focus:ring-2 focus:ring-blue-500 text-slate-700 dark:text-slate-300"
-              />
+            <div className="relative">
+              <div className="relative flex items-center">
+                <Search className="absolute left-3.5 h-3.5 w-3.5 text-slate-400 pointer-events-none" />
+                <input 
+                  type="text" 
+                  placeholder="Cari surat..." 
+                  value={searchQuery}
+                  onChange={(e) => {
+                    setSearchQuery(e.target.value);
+                    setIsSearchFocused(true);
+                  }}
+                  onFocus={() => setIsSearchFocused(true)}
+                  className="bg-slate-100 dark:bg-slate-950 border border-transparent focus:border-blue-500 rounded-full py-1.5 pl-9 pr-8 text-xs w-48 sm:w-64 focus:ring-2 focus:ring-blue-500/20 text-slate-700 dark:text-slate-300 outline-none transition-all"
+                />
+                {searchQuery && (
+                  <button 
+                    onClick={() => setSearchQuery("")}
+                    className="absolute right-3 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200"
+                  >
+                    <X className="h-3 w-3" />
+                  </button>
+                )}
+              </div>
+
+              {/* Backdrop overlay to dismiss dropdown */}
+              {isSearchFocused && searchQuery.trim() && (
+                <div 
+                  className="fixed inset-0 z-40 bg-transparent" 
+                  onClick={() => setIsSearchFocused(false)} 
+                />
+              )}
+
+              {/* Search Results Dropdown Popover */}
+              {isSearchFocused && searchQuery.trim() && (
+                <div className="absolute right-0 top-10 mt-1 w-80 sm:w-96 md:w-[480px] bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl shadow-2xl z-50 max-h-[420px] overflow-hidden flex flex-col">
+                  {/* Results Count Header */}
+                  <div className="px-4 py-2.5 bg-slate-50 dark:bg-slate-850 border-b border-slate-200 dark:border-slate-800/60 flex justify-between items-center shrink-0">
+                    <span className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider">Hasil Pencarian</span>
+                    <span className="text-[11px] font-bold text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-950/40 px-2 py-0.5 rounded-full">
+                      {totalMatches} ditemukan
+                    </span>
+                  </div>
+
+                  {/* List Content */}
+                  <div className="flex-1 overflow-y-auto divide-y divide-slate-100 dark:divide-slate-800/60">
+                    {totalMatches === 0 ? (
+                      <div className="p-8 text-center">
+                        <p className="text-slate-400 text-xs">Tidak ada hasil pencarian untuk &ldquo;<span className="font-semibold text-slate-600 dark:text-slate-200">{searchQuery}</span>&rdquo;</p>
+                        <p className="text-[10px] text-slate-400 mt-1">Coba kata kunci lain atau periksa ejaan Anda.</p>
+                      </div>
+                    ) : (
+                      <>
+                        {/* SURAT MASUK */}
+                        {matchedIn.length > 0 && (
+                          <div>
+                            <div className="px-4 py-1.5 bg-slate-50/55 dark:bg-slate-850/30 text-[9px] font-extrabold text-blue-600 dark:text-blue-400 uppercase tracking-widest sticky top-0 backdrop-blur-xs">
+                              Surat Masuk ({matchedIn.length})
+                            </div>
+                            {matchedIn.map(item => (
+                              <div 
+                                key={item.id}
+                                onClick={() => {
+                                  setSelectedSearchLetter({ letter: item, type: "in" });
+                                  setIsSearchFocused(false);
+                                }}
+                                className="p-3 hover:bg-slate-50 dark:hover:bg-slate-800/60 cursor-pointer transition-colors flex items-start gap-3"
+                              >
+                                <div className="p-2 bg-blue-50 dark:bg-blue-950/60 text-blue-600 dark:text-blue-400 rounded-lg shrink-0 mt-0.5">
+                                  <Mail className="h-3.5 w-3.5" />
+                                </div>
+                                <div className="min-w-0 flex-1">
+                                  <div className="flex items-center justify-between gap-2">
+                                    <span className="text-[9px] font-mono text-slate-400 truncate">{item.letterNumber}</span>
+                                    <span className="px-1.5 py-0.25 rounded text-[8px] font-bold bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300 uppercase shrink-0 scale-90">
+                                      {item.urgency || "Biasa"}
+                                    </span>
+                                  </div>
+                                  <p className="text-xs font-semibold text-slate-800 dark:text-slate-100 truncate mt-0.5">{item.subject}</p>
+                                  <p className="text-[10px] text-slate-500 dark:text-slate-400 mt-1 flex items-center gap-1">
+                                    <span className="font-medium text-slate-600 dark:text-slate-300">Dari:</span> 
+                                    <span className="truncate">{item.sender} - {item.senderInstitution}</span>
+                                  </p>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+
+                        {/* SURAT KELUAR */}
+                        {matchedOut.length > 0 && (
+                          <div>
+                            <div className="px-4 py-1.5 bg-slate-50/55 dark:bg-slate-850/30 text-[9px] font-extrabold text-indigo-600 dark:text-indigo-400 uppercase tracking-widest sticky top-0 backdrop-blur-xs">
+                              Surat Keluar ({matchedOut.length})
+                            </div>
+                            {matchedOut.map(item => (
+                              <div 
+                                key={item.id}
+                                onClick={() => {
+                                  setSelectedSearchLetter({ letter: item, type: "out" });
+                                  setIsSearchFocused(false);
+                                }}
+                                className="p-3 hover:bg-slate-50 dark:hover:bg-slate-800/60 cursor-pointer transition-colors flex items-start gap-3"
+                              >
+                                <div className="p-2 bg-indigo-50 dark:bg-indigo-950/60 text-indigo-600 dark:text-indigo-400 rounded-lg shrink-0 mt-0.5">
+                                  <Send className="h-3.5 w-3.5" />
+                                </div>
+                                <div className="min-w-0 flex-1">
+                                  <div className="flex items-center justify-between gap-2">
+                                    <span className="text-[9px] font-mono text-slate-400 truncate">{item.letterNumber}</span>
+                                    <span className="px-1.5 py-0.25 rounded text-[8px] font-bold bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300 uppercase shrink-0 scale-90">
+                                      {item.status || "Draft"}
+                                    </span>
+                                  </div>
+                                  <p className="text-xs font-semibold text-slate-800 dark:text-slate-100 truncate mt-0.5">{item.subject}</p>
+                                  <p className="text-[10px] text-slate-500 dark:text-slate-400 mt-1 flex items-center gap-1">
+                                    <span className="font-medium text-slate-600 dark:text-slate-300">Kepada:</span> 
+                                    <span className="truncate">{item.recipient} - {item.recipientInstitution}</span>
+                                  </p>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </>
+                    )}
+                  </div>
+                </div>
+              )}
             </div>
             <div className="flex items-center gap-3">
               <button className="p-2 text-slate-400 hover:text-blue-600">
@@ -649,6 +1268,254 @@ export default function App() {
           {renderTabContent()}
         </div>
       </main>
+
+      {/* Modal Quick View Global Search */}
+      <AnimatePresence>
+        {selectedSearchLetter && (
+          <motion.div 
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 bg-slate-950/60 backdrop-blur-xs flex items-center justify-center z-50 p-4"
+            onClick={() => setSelectedSearchLetter(null)}
+          >
+            <motion.div 
+              initial={{ scale: 0.95, y: 15 }}
+              animate={{ scale: 1, y: 0 }}
+              exit={{ scale: 0.95, y: 15 }}
+              className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl shadow-2xl max-w-2xl w-full max-h-[85vh] flex flex-col overflow-hidden text-slate-800 dark:text-slate-200"
+              onClick={(e) => e.stopPropagation()}
+            >
+              {/* Modal Header */}
+              <div className="p-5 border-b border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950/40 flex items-center justify-between shrink-0">
+                <div className="flex items-center gap-3">
+                  <div className={`p-2 rounded-xl ${
+                    selectedSearchLetter.type === "in" 
+                      ? "bg-blue-50 dark:bg-blue-950 text-blue-600 dark:text-blue-400" 
+                      : "bg-indigo-50 dark:bg-indigo-950 text-indigo-600 dark:text-indigo-400"
+                  }`}>
+                    {selectedSearchLetter.type === "in" ? <Mail className="h-5 w-5" /> : <Send className="h-5 w-5" />}
+                  </div>
+                  <div>
+                    <h3 className="font-bold text-slate-900 dark:text-white text-sm md:text-base">
+                      {selectedSearchLetter.type === "in" ? "Detail Surat Masuk (Quick View)" : "Detail Surat Keluar (Quick View)"}
+                    </h3>
+                    <p className="text-[10px] text-slate-400 dark:text-slate-500 font-mono mt-0.5">
+                      No. Surat: {selectedSearchLetter.letter.letterNumber}
+                    </p>
+                  </div>
+                </div>
+                <button 
+                  onClick={() => setSelectedSearchLetter(null)}
+                  className="p-1.5 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-full text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 transition-colors"
+                >
+                  <X className="h-4.5 w-4.5" />
+                </button>
+              </div>
+
+              {/* Modal Body */}
+              <div className="flex-1 overflow-y-auto p-6 space-y-6 text-xs md:text-sm">
+                {/* Core Meta Grid */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 bg-slate-50 dark:bg-slate-950/20 p-4 rounded-xl border border-slate-150 dark:border-slate-850">
+                  <div className="space-y-3">
+                    <div>
+                      <span className="block text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider">Perihal</span>
+                      <span className="font-semibold text-slate-800 dark:text-slate-100">{selectedSearchLetter.letter.subject}</span>
+                    </div>
+                    <div>
+                      <span className="block text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider">Kategori</span>
+                      <span className="px-2 py-0.5 bg-blue-50 dark:bg-blue-950/30 text-blue-700 dark:text-blue-400 rounded text-[11px] font-medium border border-blue-100 dark:border-blue-900/40 inline-block mt-0.5">
+                        {selectedSearchLetter.letter.category || "Umum"}
+                      </span>
+                    </div>
+                    <div>
+                      <span className="block text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider">Tanggal Surat</span>
+                      <span className="font-medium text-slate-700 dark:text-slate-200 flex items-center gap-1.5 mt-0.5">
+                        <Calendar className="h-3.5 w-3.5 text-slate-400" />
+                        {formatIndoDateGlobal(selectedSearchLetter.letter.letterDate)}
+                      </span>
+                    </div>
+                  </div>
+
+                  <div className="space-y-3">
+                    {selectedSearchLetter.type === "in" ? (
+                      <>
+                        <div>
+                          <span className="block text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider">No. Agenda</span>
+                          <span className="font-mono text-slate-700 dark:text-slate-200">{selectedSearchLetter.letter.agendaNumber || "-"}</span>
+                        </div>
+                        <div>
+                          <span className="block text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider">Tgl. Diterima</span>
+                          <span className="font-medium text-slate-700 dark:text-slate-200">{formatIndoDateGlobal(selectedSearchLetter.letter.receivedDate)}</span>
+                        </div>
+                        <div>
+                          <span className="block text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider">Status Berkas</span>
+                          <span className="px-2 py-0.5 bg-emerald-50 dark:bg-emerald-950/30 text-emerald-700 dark:text-emerald-450 rounded text-[11px] font-bold border border-emerald-100 dark:border-emerald-900/40 inline-block mt-0.5 uppercase">
+                            {selectedSearchLetter.letter.status}
+                          </span>
+                        </div>
+                      </>
+                    ) : (
+                      <>
+                        <div>
+                          <span className="block text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider">Kode Verifikasi</span>
+                          <span className="font-mono text-slate-700 dark:text-slate-200">{selectedSearchLetter.letter.verificationCode || "-"}</span>
+                        </div>
+                        <div>
+                          <span className="block text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider">Penandatangan TTE</span>
+                          <span className="font-medium text-slate-700 dark:text-slate-200">{selectedSearchLetter.letter.signatory || "-"}</span>
+                        </div>
+                        <div>
+                          <span className="block text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider">Status Keluar</span>
+                          <span className="px-2 py-0.5 bg-indigo-50 dark:bg-indigo-950/30 text-indigo-700 dark:text-indigo-400 rounded text-[11px] font-bold border border-indigo-100 dark:border-indigo-900/40 inline-block mt-0.5 uppercase">
+                            {selectedSearchLetter.letter.status}
+                          </span>
+                        </div>
+                      </>
+                    )}
+                  </div>
+                </div>
+
+                {/* Sender vs Recipient Block */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 border-t border-slate-100 dark:border-slate-800 pt-5">
+                  <div>
+                    <span className="block text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider">
+                      {selectedSearchLetter.type === "in" ? "Instansi Pengirim" : "Instansi Penerima"}
+                    </span>
+                    <p className="font-bold text-slate-800 dark:text-slate-205 mt-0.5">
+                      {selectedSearchLetter.type === "in" 
+                        ? selectedSearchLetter.letter.senderInstitution 
+                        : selectedSearchLetter.letter.recipientInstitution}
+                    </p>
+                    <p className="text-xs text-slate-500 dark:text-slate-400">
+                      {selectedSearchLetter.type === "in" 
+                        ? selectedSearchLetter.letter.sender 
+                        : selectedSearchLetter.letter.recipient}
+                    </p>
+                  </div>
+                  {selectedSearchLetter.type === "out" && selectedSearchLetter.letter.recipientEmail && (
+                    <div>
+                      <span className="block text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider">Email Tujuan</span>
+                      <p className="text-slate-700 dark:text-slate-300 font-mono mt-0.5">{selectedSearchLetter.letter.recipientEmail}</p>
+                    </div>
+                  )}
+                  {selectedSearchLetter.type === "in" && selectedSearchLetter.letter.attachmentName && (
+                    <div>
+                      <span className="block text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider">Lampiran Berkas</span>
+                      <div className="flex items-center gap-1.5 text-blue-600 dark:text-blue-400 font-semibold mt-0.5">
+                        <Paperclip className="h-3.5 w-3.5" />
+                        <span>{selectedSearchLetter.letter.attachmentName}</span>
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                {/* Specific Layout Body depending on incoming/outgoing */}
+                {selectedSearchLetter.type === "in" ? (
+                  <div className="border-t border-slate-100 dark:border-slate-800 pt-5 space-y-3">
+                    <span className="block text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider">Daftar Instruksi Disposisi</span>
+                    {(!selectedSearchLetter.letter.dispositions || selectedSearchLetter.letter.dispositions.length === 0) ? (
+                      <div className="p-4 bg-slate-50 dark:bg-slate-950/20 rounded-xl border border-dashed border-slate-200 dark:border-slate-800 text-center text-slate-400 dark:text-slate-500">
+                        Belum ada instruksi disposisi dari pimpinan terdaftar untuk surat masuk ini.
+                      </div>
+                    ) : (
+                      <div className="space-y-3">
+                        {selectedSearchLetter.letter.dispositions.map((disp: any, idx: number) => (
+                          <div 
+                            key={disp.id || idx}
+                            className="bg-slate-50 dark:bg-slate-950/30 p-3.5 rounded-xl border border-slate-200/60 dark:border-slate-850"
+                          >
+                            <div className="flex justify-between items-start gap-2 border-b border-slate-100 dark:border-slate-800 pb-2 mb-2">
+                              <div>
+                                <p className="font-bold text-slate-800 dark:text-slate-200 text-xs">
+                                  Ditujukan Kepada: <span className="text-blue-600 dark:text-blue-400">{disp.targetRole}</span>
+                                </p>
+                                <p className="text-[10px] text-slate-400 mt-0.5">
+                                  Dari: {disp.senderName} &bull; Tgl: {formatIndoDateGlobal(disp.createdAt)}
+                                </p>
+                              </div>
+                              <span className={`px-1.5 py-0.5 rounded text-[8px] font-extrabold uppercase ${
+                                disp.priority === "Tinggi" 
+                                  ? "bg-rose-100 text-rose-800 dark:bg-rose-950 dark:text-rose-300"
+                                  : disp.priority === "Sedang"
+                                  ? "bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300"
+                                  : "bg-slate-100 text-slate-800 dark:bg-slate-800 dark:text-slate-300"
+                              }`}>
+                                Prioritas: {disp.priority}
+                              </span>
+                            </div>
+                            <p className="text-slate-600 dark:text-slate-350 italic text-[11px] leading-relaxed">
+                              &ldquo;{disp.notes}&rdquo;
+                            </p>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                ) : (
+                  <div className="border-t border-slate-100 dark:border-slate-800 pt-5 space-y-3">
+                    <span className="block text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider">Isi Surat Keluar</span>
+                    <div className="bg-slate-50 dark:bg-slate-950/40 p-4 rounded-xl border border-slate-150 dark:border-slate-850 font-serif whitespace-pre-wrap leading-relaxed text-slate-800 dark:text-slate-300 max-h-[220px] overflow-y-auto">
+                      {selectedSearchLetter.letter.content}
+                    </div>
+
+                    {/* Signature Preview */}
+                    <div className="bg-slate-50 dark:bg-slate-950/20 p-3.5 rounded-xl border border-slate-200/60 dark:border-slate-850 flex items-center justify-between gap-4">
+                      <div>
+                        <span className="block text-[9px] font-bold text-slate-400 uppercase tracking-wider">Sertifikasi TTE</span>
+                        <p className="font-semibold text-slate-800 dark:text-slate-200 text-xs mt-0.5">{selectedSearchLetter.letter.signatory}</p>
+                        <p className="text-[10px] text-slate-500 dark:text-slate-400">Status Keluar: {selectedSearchLetter.letter.status}</p>
+                      </div>
+                      <div className="p-1 bg-white border border-slate-200 rounded-lg shrink-0">
+                        <div className="w-14 h-14 bg-slate-100 flex items-center justify-center rounded">
+                          <svg className="w-10 h-10 text-slate-700" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                            <rect x="1" y="1" width="6" height="6" strokeWidth="2.5" />
+                            <rect x="17" y="1" width="6" height="6" strokeWidth="2.5" />
+                            <rect x="1" y="17" width="6" height="6" strokeWidth="2.5" />
+                            <circle cx="12" cy="12" r="1" fill="currentColor" />
+                            <circle cx="18" cy="18" r="1" fill="currentColor" />
+                          </svg>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* Modal Footer actions */}
+              <div className="p-5 border-t border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950/40 flex flex-wrap gap-3 items-center justify-between shrink-0">
+                <button
+                  onClick={() => {
+                    const destTab = selectedSearchLetter.type === "in" ? "surat_masuk" : "surat_keluar";
+                    setActiveTab(destTab);
+                    setSelectedSearchLetter(null);
+                  }}
+                  className="px-4 py-2 bg-slate-200 hover:bg-slate-300 dark:bg-slate-800 dark:hover:bg-slate-750 text-slate-700 dark:text-slate-200 font-bold text-xs rounded-xl transition-all flex items-center gap-1.5 cursor-pointer shadow-xs"
+                >
+                  <ExternalLink className="h-3.5 w-3.5" />
+                  <span>Buka di Halaman {selectedSearchLetter.type === "in" ? "Surat Masuk" : "Surat Keluar"}</span>
+                </button>
+
+                <div className="flex gap-3">
+                  <button
+                    onClick={() => handleGlobalExportPDF(selectedSearchLetter.letter, selectedSearchLetter.type)}
+                    className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs rounded-xl transition-all flex items-center gap-1.5 cursor-pointer shadow-sm"
+                  >
+                    <FileDown className="h-3.5 w-3.5" />
+                    <span>Ekspor PDF Resmi</span>
+                  </button>
+                  <button
+                    onClick={() => setSelectedSearchLetter(null)}
+                    className="px-4 py-2 border border-slate-200 dark:border-slate-800 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-600 dark:text-slate-350 font-bold text-xs rounded-xl transition-all cursor-pointer"
+                  >
+                    Tutup Detail
+                  </button>
+                </div>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }

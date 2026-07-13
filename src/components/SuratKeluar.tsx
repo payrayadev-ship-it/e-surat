@@ -1469,13 +1469,13 @@ export default function SuratKeluar({
       {/* MODAL: Draft Konsep Surat Baru */}
       {isAddOpen && (
         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex justify-center items-center z-50 p-4 overflow-y-auto">
-          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl shadow-xl w-full max-w-3xl overflow-hidden animate-in fade-in zoom-in-95 duration-200">
-            <div className="p-4 bg-blue-600 text-white font-bold text-base flex justify-between items-center">
+          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl shadow-xl w-full max-w-3xl overflow-hidden animate-in fade-in zoom-in-95 duration-200 flex flex-col max-h-[90vh]">
+            <div className="p-4 bg-blue-600 text-white font-bold text-base flex justify-between items-center shrink-0">
               <span>Konsep & Draf Surat Keluar Baru</span>
               <button onClick={() => setIsAddOpen(false)} className="text-white/80 hover:text-white"><X className="h-5 w-5" /></button>
             </div>
 
-            <form onSubmit={submitLetterOut} className="p-6 space-y-4 text-xs md:text-sm">
+            <form onSubmit={submitLetterOut} className="p-6 space-y-4 text-xs md:text-sm overflow-y-auto flex-1">
               <div className="bg-gradient-to-r from-blue-900 via-indigo-950 to-blue-800 text-white rounded-xl p-4 border border-blue-800/80 space-y-3 shadow-md">
                 <div className="flex items-center space-x-2">
                   <Bot className="h-5 w-5 text-blue-400 animate-pulse shrink-0" />

@@ -1,8 +1,11 @@
 import React, { useState, useRef, useEffect } from "react";
-import { Plus, Search, FileText, Bot, Send, Check, ShieldCheck, Signature, Sparkles, Printer, UserCheck, Eye, RefreshCw, X, Edit3, QrCode, Award, ShieldAlert, CheckCircle2, Download } from "lucide-react";
+import { Plus, Search, FileText, Bot, Send, Check, ShieldCheck, Signature, Sparkles, Printer, UserCheck, Eye, RefreshCw, X, Edit3, QrCode, Award, ShieldAlert, CheckCircle2, Download, LayoutTemplate } from "lucide-react";
 import { LetterOut, UserRole, UserProfile, CompanySetting } from "../types";
 import { generateLetterNumber, injectTemplateVariables, generateVerificationQR } from "../utils";
 import { jsPDF } from "jspdf";
+import RichTextEditor from "./RichTextEditor";
+import FgiLogo from "./FgiLogo";
+import { DEFAULT_LOGO_BASE64 } from "../assets/logoBase64";
 
 interface SuratKeluarProps {
   letters: LetterOut[];
@@ -69,6 +72,90 @@ Untuk dapat melaksanakan pengawasan, tuning, instalasi database server lokal, se
 Surat tugas ini berlaku sejak tanggal ditetapkan s.d selesainya seluruh rangkaian sosialisasi user.
 
 Diharapkan seluruh rekan kerja yang ditugaskan dapat mengemban tanggung jawab ini dengan penuh etika, profesionalisme, dan integritas.`
+  },
+  {
+    id: "tpl_permohonan",
+    name: "Surat Permohonan Audiensi Kemitraan",
+    subject: "Permohonan Penjadwalan Audiensi & Kemitraan Strategis",
+    content: `Dengan hormat,
+
+Seiring dengan perkembangan teknologi informasi dan manajemen tata kelola administrasi modern, kami mendoakan semoga Bapak/Ibu {{nama_penerima}} senantiasa dalam keadaan sehat dan sukses memimpin {{alamat}}.
+
+Dalam rangka mendukung percepatan transformasi digital instansi pemerintahan serta efisiensi manajemen persuratan, bersama surat ini kami mengajukan permohonan penjadwalan audiensi singkat bersama Bapak/Ibu selaku {{jabatan}}.
+
+Tujuan utama dari permohonan audiensi ini adalah:
+1. Menyerahkan draf proposal pemanfaatan e-Sign QR Code.
+2. Memaparkan sistem kendali disposisi berbasis cloud.
+3. Mendapatkan saran dan arahan pengembangan kebijakan sistem informasi terintegrasi.
+
+Sebagai bahan pertimbangan awal, kami lampirkan pula profil profil ringkas sistem e-Office FORSDIG pada berkas terpisah. 
+
+Besar harapan kami Bapak/Ibu berkenan memberikan kesempatan pertemuan langsung pada waktu yang disepakati. Atas perhatian dan izin yang diberikan, kami ucapkan terima kasih.`
+  },
+  {
+    id: "tpl_pemberitahuan",
+    name: "Surat Pemberitahuan Cuti Bersama",
+    subject: "Pemberitahuan Pelaksanaan Cuti Bersama & Libur Nasional Hari Raya",
+    content: `Dengan hormat,
+
+Merujuk pada Keputusan Bersama Menteri Tenaga Kerja tentang Hari Libur Nasional dan Cuti Bersama tahun 2026, bersama surat ini manajemen bermaksud menginformasikan jadwal libur operasional perusahaan kepada seluruh jajaran direksi, staf, serta Bapak/Ibu {{nama_penerima}} selaku {{jabatan}} {{alamat}}.
+
+Berikut rincian pengaturan pelaksanaan libur bersama:
+• Libur Operasional: 29 Juni s.d. 1 Juli 2026
+• Kembali Bekerja: Kamis, 2 Juli 2026
+
+Selama masa libur berlangsung, seluruh sistem persuratan digital e-Office FORSDIG tetap aktif memproses registrasi surat masuk secara otomatis. Bagi korespondensi yang bersifat darurat atau mendesak, silakan menghubungi narahubung support divisi umum.
+
+Kami mengimbau kepada seluruh staf untuk memastikan kelengkapan tugas serta mengunci peralatan elektronik ruang kerja sebelum libur dimulai.
+
+Selamat menikmati libur bersama keluarga, semoga kita kembali beraktivitas dengan produktivitas tinggi. Terima kasih.`
+  },
+  {
+    id: "tpl_sk_pengangkatan",
+    name: "Surat Keputusan (SK) Pengangkatan Karyawan",
+    subject: "Surat Keputusan Direksi tentang Pengangkatan Karyawan Tetap",
+    content: `DENGAN RAHMAT TUHAN YANG MAHA ESA,
+DIREKSI PT FORESYNDO GLOBAL INDONESIA
+
+Menimbang:
+Bahwa berdasarkan penilaian kinerja, loyalitas, dan dedikasi profesional saudara {{nama_penerima}} yang menjabat sebagai {{jabatan}}, maka dipandang memenuhi syarat untuk ditetapkan sebagai Karyawan Tetap perusahaan.
+
+Mengingat:
+Anggaran Dasar PT Foresyndo Global Indonesia dan Peraturan Ketenagakerjaan yang berlaku di lingkungan internal perusahaan.
+
+MEMUTUSKAN:
+
+Pertama:
+Mengangkat Saudara {{nama_penerima}} sebagai Karyawan Tetap terhitung sejak tanggal penetapan keputusan ini.
+
+Kedua:
+Menetapkan tugas pokok dan tanggung jawab baru pada jabatan tersebut di kantor {{alamat}} dengan hak serta kompensasi finansial bulanan sesuai dengan ketentuan golongan kepangkatan yang berlaku.
+
+Ketiga:
+Keputusan ini bersifat mutlak dan apabila di kemudian hari terdapat kekeliruan dalam surat penetapan ini, maka akan dilakukan perbaikan sebagaimana mestinya.
+
+Ditetapkan di: Jakarta
+Pada tanggal: 27 Juni 2026
+
+Direktur Utama,
+PT Foresyndo Global Indonesia`
+  },
+  {
+    id: "tpl_peringatan",
+    name: "Surat Peringatan Pertama (SP-1)",
+    subject: "Surat Peringatan Pertama (SP-1) Terkait Indispliner Kinerja",
+    content: `Dengan hormat,
+
+Surat ini ditujukan secara resmi kepada saudara {{nama_penerima}} yang menjabat sebagai {{jabatan}} di unit kerja {{alamat}}.
+
+Berdasarkan laporan presensi digital serta evaluasi kinerja berkala yang dilakukan oleh Divisi Sumber Daya Manusia (HRD) pada kuartal berjalan, manajemen menemukan adanya pelanggaran atas tata tertib kehadiran kerja berupa ketidaktepatan waktu masuk kantor yang melebihi batas toleransi perusahaan tanpa keterangan tertulis.
+
+Sebagai bentuk evaluasi dan pembinaan kerja profesional, perusahaan menerbitkan Surat Peringatan Pertama (SP-1) ini dengan ketentuan sebagai berikut:
+1. Saudara wajib memperbaiki jam kehadiran kerja dan menyelesaikan tugas sesuai dengan Key Performance Indicators (KPI).
+2. SP-1 ini berlaku untuk jangka waktu 6 (enam) bulan terhitung sejak tanggal diterbitkannya surat ini.
+3. Apabila dalam masa tersebut saudara kembali melakukan pelanggaran indisipliner, perusahaan akan menindaklanjuti dengan tindakan administratif yang lebih tegas (SP-2).
+
+Kami berharap saudara dapat menerima teguran ini dengan bijak sebagai sarana refleksi untuk memulihkan etika kerja yang baik demi kemajuan karier saudara dan perusahaan.`
   }
 ];
 
@@ -112,6 +199,23 @@ export default function SuratKeluar({
   const [sigType, setSigType] = useState<"Canvas" | "QR">("Canvas");
   const [isVerifyModalOpen, setIsVerifyModalOpen] = useState(false);
   const [isEmailPreviewModalOpen, setIsEmailPreviewModalOpen] = useState(false);
+  const [isPrintPreviewModalOpen, setIsPrintPreviewModalOpen] = useState(false);
+  const [pdfDataUri, setPdfDataUri] = useState<string>("");
+  const [previewTab, setPreviewTab] = useState<"visual" | "pdf">("visual");
+
+  useEffect(() => {
+    if (isPrintPreviewModalOpen && selectedLetter) {
+      try {
+        const doc = generateLetterPDFDoc(selectedLetter);
+        if (doc) {
+          const uri = doc.output("datauristring");
+          setPdfDataUri(uri);
+        }
+      } catch (err) {
+        console.error("Failed to generate PDF for print preview:", err);
+      }
+    }
+  }, [isPrintPreviewModalOpen, selectedLetter, companySetting]);
 
   // Filter keys
   const filteredLetters = letters.filter(l => 
@@ -205,13 +309,26 @@ export default function SuratKeluar({
       const found = TEMPLATES.find(t => t.id === selectedTpl);
       if (found) {
         setSubjectVal(found.subject);
-        setContentVal(found.content);
+        
+        // Convert plain text template into rich HTML paragraphs
+        const htmlContent = found.content
+          .split("\n\n")
+          .map(para => `<p style="margin-bottom: 12px; line-height: 1.6;">${para.replace(/\n/g, "<br/>")}</p>`)
+          .join("");
+        setContentVal(htmlContent);
+
         if (selectedTpl === "tpl_undangan") {
           setLetterCategory("Undangan");
         } else if (selectedTpl === "tpl_penawaran") {
           setLetterCategory("Penawaran");
         } else if (selectedTpl === "tpl_tugas") {
           setLetterCategory("Tugas");
+        } else if (selectedTpl === "tpl_permohonan") {
+          setLetterCategory("Lainnya");
+        } else if (selectedTpl === "tpl_pemberitahuan" || selectedTpl === "tpl_peringatan") {
+          setLetterCategory("Pemberitahuan");
+        } else if (selectedTpl === "tpl_sk_pengangkatan") {
+          setLetterCategory("Keputusan");
         }
       }
     }
@@ -231,7 +348,15 @@ export default function SuratKeluar({
       
       if (data.subject) {
         setSubjectVal(data.subject);
-        setContentVal(`${data.opening}\n\n${data.body}\n\n${data.closing}`);
+        
+        // Convert plain text AI response into rich HTML paragraphs
+        const rawContent = `${data.opening}\n\n${data.body}\n\n${data.closing}`;
+        const htmlContent = rawContent
+          .split("\n\n")
+          .map(para => `<p style="margin-bottom: 12px; line-height: 1.6;">${para.replace(/\n/g, "<br/>")}</p>`)
+          .join("");
+        setContentVal(htmlContent);
+
         setSignatoryName(data.signatoryRole || "Direktur Utama");
         setIsAiPanelOpen(false);
         setIsAddOpen(true);
@@ -261,7 +386,15 @@ export default function SuratKeluar({
       
       if (data.subject) {
         setSubjectVal(data.subject);
-        setContentVal(`${data.opening}\n\n${data.body}\n\n${data.closing}`);
+        
+        // Convert plain text AI response into rich HTML paragraphs
+        const rawContent = `${data.opening}\n\n${data.body}\n\n${data.closing}`;
+        const htmlContent = rawContent
+          .split("\n\n")
+          .map(para => `<p style="margin-bottom: 12px; line-height: 1.6;">${para.replace(/\n/g, "<br/>")}</p>`)
+          .join("");
+        setContentVal(htmlContent);
+
         setSignatoryName(data.signatoryRole || "Direktur Utama");
         
         // Open the Draft Creator form modal immediately with the generated AI draft loaded
@@ -357,9 +490,9 @@ export default function SuratKeluar({
     }
   };
 
-  // Export letter to highly detailed PDF matching kop surat
-  const handleExportPDF = (letter: LetterOut) => {
-    if (!letter) return;
+  // Helper to generate the premium jsPDF document matching kop surat
+  const generateLetterPDFDoc = (letter: LetterOut): jsPDF | null => {
+    if (!letter) return null;
     
     const doc = new jsPDF({
       orientation: "portrait",
@@ -375,43 +508,59 @@ export default function SuratKeluar({
 
     // Helper to draw clean header on a page
     const drawLetterhead = (pageNumber: number) => {
-      // --- 1. Draw Corporate Letter Head Logo (Rounded Rect with Gold contrast) ---
-      doc.setFillColor(30, 41, 142); // Navy Blue
-      doc.roundedRect(20, 15, 14, 14, 2, 2, "F");
-      
-      doc.setFillColor(234, 179, 8); // Golden Accent Accent Dot
-      doc.circle(23, 26, 1.5, "F");
-
-      // Logo text white bold
-      doc.setTextColor(255, 255, 255);
-      doc.setFont("helvetica", "bold");
-      doc.setFontSize(10);
-      doc.text("FGI", 26, 23.5, { align: "center" });
+      // --- 1. Draw Corporate Letter Head Logo (always present, defaults to the beautiful vector logo) ---
+      const logoToUse = companySetting.companyLogo;
+      if (logoToUse && logoToUse.startsWith("data:image/")) {
+        try {
+          const format = logoToUse.includes("png") ? "PNG" : "JPEG";
+          doc.addImage(logoToUse, format, 20, 14, 38, 12, undefined, "FAST");
+        } catch (logoErr) {
+          console.error("Failed to add company logo to PDF in SuratKeluar:", logoErr);
+          // Clean vector fallback: Navy blue circle outline with Navy blue FGI text
+          doc.setDrawColor(30, 41, 142);
+          doc.setLineWidth(1.0);
+          doc.circle(27, 21, 6.5, "S");
+          doc.setTextColor(30, 41, 142);
+          doc.setFont("helvetica", "bold");
+          doc.setFontSize(10.5);
+          doc.text("FGI", 27, 24.5, { align: "center" });
+        }
+      } else {
+        // Clean vector fallback: Navy blue circle outline with Navy blue FGI text
+        doc.setDrawColor(30, 41, 142);
+        doc.setLineWidth(1.0);
+        doc.circle(27, 21, 6.5, "S");
+        doc.setTextColor(30, 41, 142);
+        doc.setFont("helvetica", "bold");
+        doc.setFontSize(10.5);
+        doc.text("FGI", 27, 24.5, { align: "center" });
+      }
 
       // --- 2. Company Name and Details (KOP SURAT) ---
+      const textStartX = 62;
       doc.setTextColor(15, 23, 42); // Navy / Dark slate
       doc.setFont("helvetica", "bold");
       doc.setFontSize(14);
-      doc.text(companySetting.companyName.toUpperCase(), 38, 19.5);
+      doc.text(companySetting.companyName.toUpperCase(), textStartX, 19.5);
 
       doc.setTextColor(71, 85, 105); // Slate Dark Grey
       doc.setFont("helvetica", "normal");
       doc.setFontSize(8.5);
       
       const addrWithFormat = companySetting.companyAddress;
-      const addressLines = doc.splitTextToSize(addrWithFormat, 150);
-      doc.text(addressLines, 38, 24);
+      const addressLines = doc.splitTextToSize(addrWithFormat, 140);
+      doc.text(addressLines, textStartX, 24);
       
       // Telephone & email details line
       const detailsLineY = 24 + (addressLines.length * 3.8);
       
       doc.setFont("helvetica", "bold");
       doc.setTextColor(30, 41, 142);
-      doc.text("e-Office & Digital Signature Hub", 38, detailsLineY);
+      doc.text("e-Office & Digital Signature Hub", textStartX, detailsLineY);
       
       doc.setFont("helvetica", "normal");
       doc.setTextColor(100, 116, 139);
-      doc.text(` |  Telp: ${companySetting.companyPhone}  |  Email: ${companySetting.companyEmail}`, 85, detailsLineY);
+      doc.text(` |  Telp: ${companySetting.companyPhone}  |  Email: ${companySetting.companyEmail}`, textStartX + 47, detailsLineY);
 
       // --- 3. Premium Double Divider borders ---
       const lineY = detailsLineY + 3.5;
@@ -490,8 +639,22 @@ export default function SuratKeluar({
     doc.setFontSize(11);
     doc.setTextColor(30, 41, 59); // Crisp deep charcoal body text (less harsh than pure black)
 
+    // Helper to strip HTML tags from rich editor string
+    const stripHtml = (htmlStr: string): string => {
+      if (!htmlStr) return "";
+      const withBreaks = htmlStr
+        .replace(/<br\s*\/?>/gi, "\n")
+        .replace(/<\/p>/gi, "\n")
+        .replace(/<\/div>/gi, "\n")
+        .replace(/<\/li>/gi, "\n")
+        .replace(/<li>/gi, "• ");
+      const tempDiv = document.createElement("div");
+      tempDiv.innerHTML = withBreaks;
+      return tempDiv.textContent || tempDiv.innerText || "";
+    };
+
     // Substitute template vars
-    const formattedContent = injectTemplateVariables(letter.content, {
+    const substituted = injectTemplateVariables(letter.content, {
       nomor_surat: letter.letterNumber,
       tanggal: letter.letterDate ? formatDateIndo(letter.letterDate) : getCurrentFormattedDate(),
       nama_penerima: letter.recipient,
@@ -500,6 +663,8 @@ export default function SuratKeluar({
       perihal: letter.subject,
       nama_direktur: letter.signatory
     });
+
+    const formattedContent = stripHtml(substituted);
 
     // Split letter content by single/double newlines into clean logical paragraphs
     const paragraphs = formattedContent.split(/\n+/).map(p => p.trim()).filter(Boolean);
@@ -744,8 +909,15 @@ export default function SuratKeluar({
     doc.setTextColor(71, 85, 105);
     doc.text("Direktur Utama", signX, footerY + 27.2);
 
-    // Save triggers download with neat ID filename
-    doc.save(`${letter.verificationCode}_LettersOut.pdf`);
+    return doc;
+  };
+
+  // Export letter to highly detailed PDF matching kop surat
+  const handleExportPDF = (letter: LetterOut) => {
+    const doc = generateLetterPDFDoc(letter);
+    if (doc) {
+      doc.save(`${letter.verificationCode}_LettersOut.pdf`);
+    }
   };
 
   const isViewer = currentRole === "Viewer";
@@ -972,6 +1144,17 @@ export default function SuratKeluar({
                           onUpdateStatus(selectedLetter.id, "Terkirim", "Sent to recipient via Resend official correspondence channel.");
                           setSelectedLetter({...selectedLetter, status: "Terkirim"});
                           
+                          // Generate PDF base64 data for attachment
+                          let pdfBase64 = "";
+                          try {
+                            const doc = generateLetterPDFDoc(selectedLetter);
+                            if (doc) {
+                              pdfBase64 = doc.output("datauristring").split(",")[1];
+                            }
+                          } catch (pdfErr) {
+                            console.error("Failed to generate PDF for attachment:", pdfErr);
+                          }
+
                           // Transmit email via Resend API
                           fetch("/api/email/send", {
                             method: "POST",
@@ -981,6 +1164,7 @@ export default function SuratKeluar({
                               subject: `[FGI OFFICE] - ${selectedLetter.subject}`,
                               body: selectedLetter.content,
                               attachmentName: `Letter_${selectedLetter.verificationCode}.pdf`,
+                              pdfData: pdfBase64 || undefined,
                               letterData: {
                                 letterNumber: selectedLetter.letterNumber,
                                 letterDate: selectedLetter.letterDate,
@@ -1045,6 +1229,20 @@ export default function SuratKeluar({
                     >
                       <FileText className="h-3 w-3" />
                       <span>Unduh PDF</span>
+                    </button>
+
+                    {/* PRINT PREVIEW VIEW */}
+                    <button 
+                      onClick={() => {
+                        setPreviewTab("visual");
+                        setIsPrintPreviewModalOpen(true);
+                      }}
+                      className="flex-1 md:flex-none flex items-center justify-center space-x-1.5 bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-1.5 px-3.5 rounded text-xs transition-all cursor-pointer shadow-sm shadow-indigo-200 dark:shadow-none"
+                      id="btn-pratinjau-cetak"
+                      title="Pratinjau tata letak dokumen dan branding perusahaan"
+                    >
+                      <LayoutTemplate className="h-3.5 w-3.5" />
+                      <span>Pratinjau Cetak</span>
                     </button>
                   </div>
                 </div>
@@ -1157,9 +1355,13 @@ export default function SuratKeluar({
               >
                 {/* Letter Head (KOP SURAT) */}
                 <div className="flex border-b-4 border-slate-900 pb-4 mb-6 items-center">
-                  {/* Corporate design SVG vector logo */}
-                  <div className="p-3 bg-blue-900 text-white rounded-lg mr-4 shrink-0 font-sans font-extrabold tracking-tighter text-xl">
-                    FGI
+                  {/* Corporate design logo */}
+                  <div className="mr-4 shrink-0 bg-white p-1 rounded border border-slate-100">
+                    {companySetting.companyLogo ? (
+                      <img src={companySetting.companyLogo} alt="Logo" className="h-12 max-w-[130px] object-contain" referrerPolicy="no-referrer" />
+                    ) : (
+                      <FgiLogo size={42} />
+                    )}
                   </div>
                   <div className="flex-1">
                     <h1 className="font-sans font-extrabold text-xl tracking-tight text-slate-900 uppercase">{companySetting.companyName}</h1>
@@ -1189,9 +1391,10 @@ export default function SuratKeluar({
                 </div>
 
                 {/* Core contents structured paragraph rendering */}
-                <div className="text-xs text-slate-850 leading-relaxed whitespace-pre-line mb-8 min-h-[160px] font-sans">
-                  {getSubstitutedContent(selectedLetter.content)}
-                </div>
+                <div 
+                  className="text-xs text-slate-850 leading-relaxed mb-8 min-h-[160px] font-sans rich-text-preview"
+                  dangerouslySetInnerHTML={{ __html: getSubstitutedContent(selectedLetter.content) }}
+                />
 
                 {/* Sign-off e-signature blocks and integrity check stamps */}
                 <div className="flex justify-between items-end border-t border-slate-100 pt-6">
@@ -1443,13 +1646,10 @@ export default function SuratKeluar({
 
               <div>
                 <label className="block text-slate-500 font-semibold mb-1">Isi & Narasi Teks Surat</label>
-                <textarea 
-                  required
-                  placeholder="Narasi utama atau isi draf surat resmi..."
-                  rows={6}
+                <RichTextEditor
                   value={contentVal}
-                  onChange={(e) => setContentVal(e.target.value)}
-                  className="w-full p-2.5 border border-slate-200 dark:border-slate-800 rounded bg-slate-50 dark:bg-slate-950 font-sans text-xs md:text-sm text-slate-800 dark:text-slate-100 focus:outline-blue-500"
+                  onChange={(val) => setContentVal(val)}
+                  placeholder="Narasi utama atau isi draf surat resmi..."
                 />
               </div>
 
@@ -1835,8 +2035,7 @@ export default function SuratKeluar({
           </div>
         </div>
       )}
-
-      {/* MODAL: Email Template Review (Resend Simulator) */}
+         {/* MODAL: Email Template Review (Resend Simulator) */}
       {isEmailPreviewModalOpen && selectedLetter && (
         <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex justify-center items-center z-50 p-4">
           <div className="bg-slate-100 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl shadow-2xl w-full max-w-2xl overflow-hidden animate-in fade-in zoom-in-95 duration-200 flex flex-col max-h-[90vh]">
@@ -1907,9 +2106,10 @@ export default function SuratKeluar({
                   </h4>
 
                   {/* Body Content */}
-                  <p className="text-xs md:text-sm text-slate-700 leading-relaxed whitespace-pre-line antialiased">
-                    {getSubstitutedContent(selectedLetter.content)}
-                  </p>
+                  <div 
+                    className="text-xs md:text-sm text-slate-700 leading-relaxed antialiased rich-text-preview"
+                    dangerouslySetInnerHTML={{ __html: getSubstitutedContent(selectedLetter.content) }}
+                  />
 
                   {/* Attachment indicator block */}
                   <div className="p-3 bg-slate-50 border border-slate-150 rounded-lg flex items-center justify-between text-xs">
@@ -1930,23 +2130,23 @@ export default function SuratKeluar({
                     <span className="text-[9.5px] font-bold text-slate-500 uppercase tracking-wider block">Sertifikasi & Kredensial TTE</span>
                     <div className="divide-y divide-slate-150 text-xs">
                       <div className="py-2 flex justify-between">
-                        <span className="text-slate-500">Nomor Surat</span>
-                        <span className="font-mono font-bold text-slate-800">{selectedLetter.letterNumber || '-'}</span>
+                        <span className="text-slate-505">Nomor Surat</span>
+                        <span className="font-mono font-bold text-slate-850">{selectedLetter.letterNumber || '-'}</span>
                       </div>
                       <div className="py-2 flex justify-between">
-                        <span className="text-slate-500">Tanggal Surat</span>
-                        <span className="font-medium text-slate-800">{selectedLetter.letterDate || '-'}</span>
+                        <span className="text-slate-505">Tanggal Surat</span>
+                        <span className="font-medium text-slate-850">{selectedLetter.letterDate || '-'}</span>
                       </div>
                       <div className="py-2 flex justify-between">
-                        <span className="text-slate-500">Penerima</span>
-                        <span className="font-medium text-slate-800">{selectedLetter.recipient} ({selectedLetter.recipientInstitution || '-'})</span>
+                        <span className="text-slate-505">Penerima</span>
+                        <span className="font-medium text-slate-850">{selectedLetter.recipient} ({selectedLetter.recipientInstitution || '-'})</span>
                       </div>
                       <div className="py-2 flex justify-between">
-                        <span className="text-slate-500">Penandatangan</span>
-                        <span className="font-medium text-slate-800">{selectedLetter.signatory || '-'}</span>
+                        <span className="text-slate-505">Penandatangan</span>
+                        <span className="font-medium text-slate-850">{selectedLetter.signatory || '-'}</span>
                       </div>
                       <div className="py-2 flex justify-between">
-                        <span className="text-slate-500">Kode Verifikasi TTE</span>
+                        <span className="text-slate-505">Kode Verifikasi TTE</span>
                         <span className="font-mono font-bold text-slate-850 bg-slate-150 px-1.5 py-0.5 rounded text-[10px]">{selectedLetter.verificationCode}</span>
                       </div>
                       <div className="py-2 flex justify-between">
@@ -1991,6 +2191,316 @@ export default function SuratKeluar({
                 Kembali ke Dokumen
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL: Print Preview & Corporate Branding Verification */}
+      {isPrintPreviewModalOpen && selectedLetter && (
+        <div className="fixed inset-0 bg-black/80 backdrop-blur-md flex justify-center items-center z-50 p-2 sm:p-4 overflow-y-auto">
+          <div className="bg-slate-100 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl shadow-2xl w-full max-w-5xl overflow-hidden animate-in fade-in zoom-in-95 duration-200 flex flex-col h-[95vh] sm:h-[90vh]">
+            
+            {/* Header */}
+            <div className="p-4 bg-slate-900 text-white font-bold text-sm flex justify-between items-center border-b border-slate-800 shrink-0">
+              <div className="flex items-center space-x-3">
+                <div className="p-1.5 bg-indigo-600 rounded-lg text-white">
+                  <LayoutTemplate className="h-4.5 w-4.5" />
+                </div>
+                <div>
+                  <h3 className="font-extrabold text-base tracking-tight">Pratinjau Cetak & Verifikasi Branding</h3>
+                  <p className="text-[10px] text-slate-400 font-normal mt-0.5">Verifikasi visual tata letak dokumen (A4) dan validitas e-Sign Hub sebelum didistribusikan</p>
+                </div>
+              </div>
+              <button 
+                onClick={() => setIsPrintPreviewModalOpen(false)} 
+                className="text-slate-400 hover:text-white transition-colors cursor-pointer p-1.5 hover:bg-slate-800 rounded-lg"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+
+            {/* Sub-toolbar with tab toggle and direct action buttons */}
+            <div className="bg-slate-50 dark:bg-slate-950 border-b border-slate-200 dark:border-slate-850 px-4 py-3 flex flex-col sm:flex-row justify-between items-center gap-3 shrink-0">
+              {/* Tab Selector */}
+              <div className="flex bg-slate-200 dark:bg-slate-850 p-1 rounded-xl w-full sm:w-auto">
+                <button
+                  onClick={() => setPreviewTab("visual")}
+                  className={`flex-1 sm:flex-none flex items-center justify-center space-x-2 px-4 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                    previewTab === "visual"
+                      ? "bg-white dark:bg-slate-800 text-slate-900 dark:text-white shadow-xs"
+                      : "text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:hover:text-slate-200"
+                  }`}
+                >
+                  <Eye className="h-3.5 w-3.5" />
+                  <span>Draft Visual A4</span>
+                </button>
+                <button
+                  onClick={() => setPreviewTab("pdf")}
+                  className={`flex-1 sm:flex-none flex items-center justify-center space-x-2 px-4 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                    previewTab === "pdf"
+                      ? "bg-white dark:bg-slate-800 text-slate-900 dark:text-white shadow-xs"
+                      : "text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:hover:text-slate-200"
+                  }`}
+                >
+                  <FileText className="h-3.5 w-3.5" />
+                  <span>PDF Stream Asli</span>
+                </button>
+              </div>
+
+              {/* Instant Actions */}
+              <div className="flex items-center space-x-2 w-full sm:w-auto justify-end">
+                <button
+                  onClick={() => {
+                    const doc = generateLetterPDFDoc(selectedLetter);
+                    if (doc) {
+                      doc.save(`Draft_${selectedLetter.verificationCode}.pdf`);
+                    }
+                  }}
+                  className="flex-1 sm:flex-none flex items-center justify-center space-x-1.5 bg-slate-800 hover:bg-slate-700 dark:bg-slate-800 dark:hover:bg-slate-700 text-white font-bold py-1.5 px-3.5 rounded-lg text-xs transition-all cursor-pointer"
+                >
+                  <Download className="h-3.5 w-3.5 text-slate-300" />
+                  <span>Unduh PDF</span>
+                </button>
+
+                <button
+                  onClick={() => {
+                    try {
+                      const doc = generateLetterPDFDoc(selectedLetter);
+                      if (doc) {
+                        const blobUrl = doc.output("bloburl");
+                        const printWindow = window.open(blobUrl, "_blank");
+                        if (printWindow) {
+                          printWindow.print();
+                        } else {
+                          // fallback standard print window
+                          window.print();
+                        }
+                      }
+                    } catch (e) {
+                      console.error("Print failed:", e);
+                      window.print();
+                    }
+                  }}
+                  className="flex-1 sm:flex-none flex items-center justify-center space-x-1.5 bg-blue-600 hover:bg-blue-700 text-white font-bold py-1.5 px-3.5 rounded-lg text-xs transition-all cursor-pointer"
+                >
+                  <Printer className="h-3.5 w-3.5" />
+                  <span>Cetak Dokumen</span>
+                </button>
+              </div>
+            </div>
+
+            {/* Split Panel Layout */}
+            <div className="flex-1 overflow-hidden flex flex-col md:flex-row bg-slate-100 dark:bg-slate-900">
+              
+              {/* Left Side: Preview Frame */}
+              <div className="flex-1 overflow-y-auto p-4 md:p-6 flex justify-center items-start border-r border-slate-200 dark:border-slate-850">
+                {previewTab === "visual" ? (
+                  /* High Fidelity Visual A4 Simulator */
+                  <div className="w-full max-w-[210mm] bg-white text-slate-850 p-8 sm:p-12 md:p-14 rounded-xl border border-slate-200 dark:border-slate-800 shadow-xl font-serif text-left relative min-h-[297mm] transition-all">
+                    {/* Watermark background on preview */}
+                    <div className="absolute inset-0 flex items-center justify-center pointer-events-none opacity-[0.03] select-none">
+                      <div className="border-[8px] border-blue-900 rounded-full p-24">
+                        <span className="text-4xl font-sans font-black tracking-widest text-blue-900">FGI HUB</span>
+                      </div>
+                    </div>
+
+                    {/* Letter Head (KOP SURAT) */}
+                    <div className="flex border-b-4 border-slate-900 pb-4 mb-6 items-center">
+                      <div className="mr-5 shrink-0 bg-white p-1 rounded border border-slate-100">
+                        {companySetting.companyLogo ? (
+                          <img src={companySetting.companyLogo} alt="Logo" className="h-14 max-w-[140px] object-contain" referrerPolicy="no-referrer" />
+                        ) : (
+                          <FgiLogo size={48} />
+                        )}
+                      </div>
+                      <div className="flex-1">
+                        <h1 className="font-sans font-extrabold text-2xl tracking-tight text-slate-900 uppercase leading-none">{companySetting.companyName}</h1>
+                        <p className="text-xs font-sans text-slate-500 font-medium leading-normal mt-1">{companySetting.companyAddress}</p>
+                        <p className="text-[11px] font-sans text-slate-400 font-medium mt-0.5">Telp: {companySetting.companyPhone} | Email: {companySetting.companyEmail}</p>
+                      </div>
+                    </div>
+
+                    {/* Subtitle / Agenda dates */}
+                    <div className="flex justify-between items-start text-xs sm:text-sm font-sans font-medium mb-6">
+                      <div className="space-y-1">
+                        <p>Nomor : <span className="font-semibold font-mono tracking-tight text-indigo-700">{selectedLetter.letterNumber}</span></p>
+                        <p>Sifat  : Biasa / Terbuka</p>
+                        <p>Hal    : <span className="font-semibold text-slate-900">{selectedLetter.subject}</span></p>
+                      </div>
+                      <div>
+                        <p>Jakarta, {selectedLetter.letterDate ? formatDateIndo(selectedLetter.letterDate) : getCurrentFormattedDate()}</p>
+                      </div>
+                    </div>
+
+                    {/* Recipient Address */}
+                    <div className="text-xs sm:text-sm font-sans leading-relaxed mb-6 space-y-0.5">
+                      <p className="text-slate-400">Kepada Yth,</p>
+                      <p className="font-bold text-slate-900 text-sm">{selectedLetter.recipient}</p>
+                      <p className="font-medium text-slate-600">{selectedLetter.recipientInstitution}</p>
+                      <p className="text-slate-400">Di tempat</p>
+                    </div>
+
+                    {/* Core contents structured paragraph rendering */}
+                    <div 
+                      className="text-xs sm:text-sm text-slate-800 leading-relaxed mb-8 min-h-[220px] font-sans rich-text-preview text-justify space-y-4"
+                      dangerouslySetInnerHTML={{ __html: getSubstitutedContent(selectedLetter.content) }}
+                    />
+
+                    {/* Sign-off e-signature blocks and integrity check stamps */}
+                    <div className="flex flex-col sm:flex-row justify-between items-start sm:items-end gap-6 border-t border-slate-100 pt-6">
+                      {/* QR code Integrity block */}
+                      <div className="flex items-center space-x-3 text-[10px] font-sans text-slate-400 bg-slate-50 p-2.5 rounded-lg border border-slate-100 shrink-0">
+                        <div 
+                          className="cursor-pointer shrink-0 p-1 bg-white border border-slate-200 rounded" 
+                          onClick={() => alert(`Informasi Verifikasi Dokumen:\nNomor: ${selectedLetter.letterNumber}\nTanggal: ${selectedLetter.letterDate}\nPenandatangan: ${selectedLetter.signatory}\nStatus: ${selectedLetter.status}\nIntegrity Code: ${selectedLetter.verificationCode}`)}
+                          dangerouslySetInnerHTML={{ __html: generateVerificationQR(selectedLetter.verificationCode, 64, 64) }} 
+                        />
+                        <div>
+                          <p className="font-bold text-slate-800">QR Verifikasi Dokumen</p>
+                          <p className="font-mono mt-0.5 text-indigo-700 font-bold">{selectedLetter.verificationCode}</p>
+                          <span className="text-[9px] text-slate-400 block mt-0.5">DOKUMEN TERVERIFIKASI SAH<br/>Pindai untuk audit log instansi</span>
+                        </div>
+                      </div>
+
+                      {/* Signatory name and PNG sign-stamp */}
+                      <div className="text-left sm:text-right text-xs sm:text-sm font-sans pr-4">
+                        <p className="text-slate-500">Hormat kami,</p>
+                        <p className="font-bold text-slate-900 mt-1 uppercase">{companySetting.companyName}</p>
+                        
+                        {/* Digital Signature */}
+                        <div className="h-16 flex justify-start sm:justify-end items-center my-2 relative min-w-[150px]">
+                          {selectedLetter.signatureEnabled && (
+                            <div className="absolute left-0 sm:right-0 opacity-85 hover:opacity-100 transition-opacity flex items-center justify-center">
+                              {selectedLetter.signatureType === "QR" ? (
+                                <div className="flex items-center space-x-2 border border-blue-200 bg-blue-50/50 p-1.5 rounded-lg shadow-sm text-left">
+                                  {/* Clean Mini QR-like SVG decoration */}
+                                  <div className="w-8 h-8 bg-white border border-blue-300 p-0.5 rounded flex flex-col justify-between shrink-0">
+                                    <svg className="w-full h-full text-blue-700" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                      <rect x="1" y="1" width="6" height="6" strokeWidth="2.5" />
+                                      <rect x="17" y="1" width="6" height="6" strokeWidth="2.5" />
+                                      <rect x="1" y="17" width="6" height="6" strokeWidth="2.5" />
+                                      <path d="M12 4h2M4 12V14M12 12V20M20 12v4M16 16h4" strokeWidth="1.5" />
+                                    </svg>
+                                  </div>
+                                  <div className="text-[9px] leading-tight text-blue-800">
+                                    <p className="font-bold tracking-tight">TTE VERIFIED</p>
+                                    <p className="text-[8px] text-slate-500 font-mono">TTE-{selectedLetter.verificationCode.substring(4)}</p>
+                                    <span className="text-[7.5px] text-emerald-600 bg-emerald-50 px-1 rounded font-semibold border border-emerald-100 block mt-0.5">e-Sign Forsdig</span>
+                                  </div>
+                                </div>
+                              ) : (selectedLetter.signatureUrl || sigDataUrl) ? (
+                                <img src={selectedLetter.signatureUrl || sigDataUrl} alt="E-Sign" className="h-14 object-contain" />
+                              ) : (
+                                // Fallback standard executive signature SVG paths
+                                <svg className="w-24 h-12 text-blue-900 duration-150" viewBox="0 0 100 40" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                  <path d="M10 25C25 15 45 5 60 20C75 35 30 40 20 20C10 0 70 8 90 22" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"/>
+                                </svg>
+                              )}
+                            </div>
+                          )}
+                        </div>
+
+                        <div className="pt-2">
+                          <p className="font-bold text-slate-900 border-b border-slate-300 pb-0.5 inline-block min-w-[120px]">{selectedLetter.signatory}</p>
+                          <p className="text-[11px] text-slate-500 mt-1">Direktur Utama</p>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Footer Page Number mockup */}
+                    <div className="absolute bottom-4 right-8 text-[10px] font-sans text-slate-400 font-semibold">
+                      Hal 1 dari 1
+                    </div>
+                  </div>
+                ) : (
+                  /* Real PDF stream object iframe rendering */
+                  <div className="w-full h-full min-h-[500px] bg-slate-700 rounded-xl overflow-hidden shadow-xl border border-slate-200 dark:border-slate-800 flex flex-col">
+                    {pdfDataUri ? (
+                      <iframe
+                        src={`${pdfDataUri}#toolbar=1`}
+                        title="PDF Document Stream"
+                        className="w-full h-full min-h-[550px] flex-1 border-none"
+                      />
+                    ) : (
+                      <div className="flex flex-col items-center justify-center h-full text-white p-6 space-y-4">
+                        <RefreshCw className="h-8 w-8 text-indigo-400 animate-spin" />
+                        <p className="font-bold text-sm">Menghasilkan file PDF asli...</p>
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+
+              {/* Right Side: Verification Sidebar */}
+              <div className="w-full md:w-80 bg-white dark:bg-slate-900 p-5 md:p-6 overflow-y-auto flex flex-col space-y-5 border-t md:border-t-0 md:border-l border-slate-200 dark:border-slate-800 shrink-0 text-left">
+                <div>
+                  <h4 className="font-bold text-xs text-slate-400 uppercase tracking-wider mb-2">Pemeriksaan Branding</h4>
+                  <p className="text-xs text-slate-600 dark:text-slate-400 leading-relaxed">
+                    Sistem memverifikasi visual logo, nama instansi, dan legalitas kop surat sesuai aturan identitas PT Foresyndo Global Indonesia.
+                  </p>
+                </div>
+
+                <div className="space-y-3.5">
+                  <div className="flex items-start space-x-3 p-3 bg-slate-50 dark:bg-slate-850 rounded-xl border border-slate-150 dark:border-slate-800">
+                    <CheckCircle2 className="h-5 w-5 text-emerald-500 shrink-0 mt-0.5" />
+                    <div>
+                      <h5 className="font-bold text-xs text-slate-900 dark:text-slate-100">Logo Perusahaan</h5>
+                      <p className="text-[11px] text-slate-500 mt-0.5">Logo formal berwarna biru navy tersemat di kop surat.</p>
+                    </div>
+                  </div>
+
+                  <div className="flex items-start space-x-3 p-3 bg-slate-50 dark:bg-slate-850 rounded-xl border border-slate-150 dark:border-slate-800">
+                    <CheckCircle2 className="h-5 w-5 text-emerald-500 shrink-0 mt-0.5" />
+                    <div>
+                      <h5 className="font-bold text-xs text-slate-900 dark:text-slate-100">Kop Surat Terpadu</h5>
+                      <p className="text-[11px] text-slate-500 mt-0.5">Sesuai standar alamat instansi dan kontak resmi.</p>
+                    </div>
+                  </div>
+
+                  <div className="flex items-start space-x-3 p-3 bg-slate-50 dark:bg-slate-850 rounded-xl border border-slate-150 dark:border-slate-800">
+                    <CheckCircle2 className="h-5 w-5 text-emerald-500 shrink-0 mt-0.5" />
+                    <div>
+                      <h5 className="font-bold text-xs text-slate-900 dark:text-slate-100">Kode Unik Keaslian QR</h5>
+                      <p className="text-[11px] text-slate-500 mt-0.5">TTE QR Code dan serial ({selectedLetter.verificationCode}) sinkron.</p>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="pt-4 border-t border-slate-150 dark:border-slate-800 space-y-3">
+                  <h4 className="font-bold text-xs text-slate-400 uppercase tracking-wider">Kredensial Dokumen</h4>
+                  <div className="space-y-2 text-xs font-mono">
+                    <div className="flex justify-between py-1 border-b border-dashed border-slate-150 dark:border-slate-800">
+                      <span className="text-slate-400">Nomor:</span>
+                      <span className="font-bold text-slate-800 dark:text-slate-200">{selectedLetter.letterNumber}</span>
+                    </div>
+                    <div className="flex justify-between py-1 border-b border-dashed border-slate-150 dark:border-slate-800">
+                      <span className="text-slate-400">Status:</span>
+                      <span className="font-bold text-indigo-600 dark:text-indigo-400">{selectedLetter.status}</span>
+                    </div>
+                    <div className="flex justify-between py-1 border-b border-dashed border-slate-150 dark:border-slate-800">
+                      <span className="text-slate-400">TTE Sign:</span>
+                      <span className="font-bold text-emerald-600 dark:text-emerald-400">{selectedLetter.signatureEnabled ? "AKTIF" : "NONAKTIF"}</span>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="p-3 bg-indigo-50 dark:bg-indigo-950/20 border border-indigo-100 dark:border-indigo-900/30 rounded-xl text-[11px] text-indigo-700 dark:text-indigo-300 leading-relaxed mt-auto">
+                  💡 <strong>Tip Distribusi:</strong> Gunakan tab <strong>PDF Stream Asli</strong> untuk menginspeksi tata letak halaman jika isi surat sangat panjang dan meluber ke halaman berikutnya.
+                </div>
+              </div>
+            </div>
+
+            {/* Footer */}
+            <div className="p-4 bg-slate-50 dark:bg-slate-950 border-t border-slate-200 dark:border-slate-800 flex justify-between items-center shrink-0">
+              <span className="text-[10px] font-mono text-slate-400">Forsdig Layout Viewer Engine v3.2</span>
+              <button
+                onClick={() => setIsPrintPreviewModalOpen(false)}
+                className="bg-slate-900 hover:bg-slate-800 dark:bg-slate-800 dark:hover:bg-slate-700 text-white text-xs font-bold py-2 px-6 rounded-xl transition-all cursor-pointer shadow-md"
+              >
+                Tutup Pratinjau
+              </button>
+            </div>
+
           </div>
         </div>
       )}

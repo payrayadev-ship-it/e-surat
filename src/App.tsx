@@ -24,6 +24,8 @@ import MemosMeetings from "./components/MemosMeetings";
 import ArsipDigital from "./components/ArsipDigital";
 import SettingsAudit from "./components/SettingsAudit";
 import AIKontrak from "./components/AIKontrak";
+import FgiLogo from "./components/FgiLogo";
+import { DEFAULT_LOGO_BASE64 } from "./assets/logoBase64";
 
 // Mock Active profiles for quick demo selection
 const WORKSPACE_USERS: UserProfile[] = [
@@ -159,42 +161,58 @@ export default function App() {
     const contentWidth = 170;
 
     const drawLetterhead = (pageNumber: number) => {
-      // Draw Corporate Letter Head Logo
-      doc.setFillColor(30, 41, 142); // Navy Blue
-      doc.roundedRect(20, 15, 14, 14, 2, 2, "F");
-      
-      doc.setFillColor(234, 179, 8); // Golden Accent Accent Dot
-      doc.circle(23, 26, 1.5, "F");
+      // Draw Corporate Letter Head Logo (always present, defaults to the beautiful vector logo)
+      const logoToUse = companySetting.companyLogo;
+      if (logoToUse && logoToUse.startsWith("data:image/")) {
+        try {
+          const format = logoToUse.includes("png") ? "PNG" : "JPEG";
+          doc.addImage(logoToUse, format, 20, 14, 38, 12, undefined, "FAST");
+        } catch (logoErr) {
+          console.error("Failed to add company logo to PDF:", logoErr);
+          // Clean vector fallback: Navy blue circle outline with Navy blue FGI text
+          doc.setDrawColor(30, 41, 142);
+          doc.setLineWidth(1.0);
+          doc.circle(27, 21, 6.5, "S");
+          doc.setTextColor(30, 41, 142);
+          doc.setFont("helvetica", "bold");
+          doc.setFontSize(10.5);
+          doc.text("FGI", 27, 24.5, { align: "center" });
+        }
+      } else {
+        // Clean vector fallback: Navy blue circle outline with Navy blue FGI text
+        doc.setDrawColor(30, 41, 142);
+        doc.setLineWidth(1.0);
+        doc.circle(27, 21, 6.5, "S");
+        doc.setTextColor(30, 41, 142);
+        doc.setFont("helvetica", "bold");
+        doc.setFontSize(10.5);
+        doc.text("FGI", 27, 24.5, { align: "center" });
+      }
 
-      // Logo text FGI
-      doc.setTextColor(255, 255, 255);
-      doc.setFont("helvetica", "bold");
-      doc.setFontSize(10);
-      doc.text("FGI", 26, 23.5, { align: "center" });
-
-      // Company Name and Details
+      // Company Name and Details (always offset x to 62 because logo is always shown)
+      const textStartX = 62;
       doc.setTextColor(15, 23, 42); // Navy / Dark slate
       doc.setFont("helvetica", "bold");
       doc.setFontSize(14);
-      doc.text(companySetting.companyName.toUpperCase(), 38, 19.5);
+      doc.text(companySetting.companyName.toUpperCase(), textStartX, 19.5);
 
       doc.setTextColor(71, 85, 105); // Slate Dark Grey
       doc.setFont("helvetica", "normal");
       doc.setFontSize(8.5);
       
       const addrWithFormat = companySetting.companyAddress;
-      const addressLines = doc.splitTextToSize(addrWithFormat, 150);
-      doc.text(addressLines, 38, 24);
+      const addressLines = doc.splitTextToSize(addrWithFormat, 140);
+      doc.text(addressLines, textStartX, 24);
       
       const detailsLineY = 24 + (addressLines.length * 3.8);
       
       doc.setFont("helvetica", "bold");
       doc.setTextColor(30, 41, 142);
-      doc.text("e-Office & Digital Signature Hub", 38, detailsLineY);
+      doc.text("e-Office & Digital Signature Hub", textStartX, detailsLineY);
       
       doc.setFont("helvetica", "normal");
       doc.setTextColor(100, 116, 139);
-      doc.text(` |  Telp: ${companySetting.companyPhone}  |  Email: ${companySetting.companyEmail}`, 85, detailsLineY);
+      doc.text(` |  Telp: ${companySetting.companyPhone}  |  Email: ${companySetting.companyEmail}`, textStartX + 47, detailsLineY);
 
       // Premium Double Divider borders
       const lineY = detailsLineY + 3.5;
@@ -702,6 +720,92 @@ export default function App() {
     }));
 
     addAuditLog(`Mengirim disposisi instruksi kepada ${disp.targetRole}`, "Approval");
+
+    // Automated function to send Resend email notification to the relevant department head
+    try {
+      const getRecipientInfo = (role: string) => {
+        const roleLower = role.toLowerCase();
+        if (roleLower.includes("direktur")) {
+          return {
+            name: "Ir. Joko Sutrisno, M.T.",
+            email: "joko.sutrisno@forsdig.com"
+          };
+        } else if (roleLower.includes("manager") || roleLower.includes("supervisor")) {
+          return {
+            name: "Dewi Lestari, S.E.",
+            email: "dewi.lestari@forsdig.com"
+          };
+        } else if (roleLower.includes("staff") || roleLower.includes("admin") || roleLower.includes("umum") || roleLower.includes("sekretaris")) {
+          return {
+            name: "Budi Pratama",
+            email: "budi.pratama@forsdig.com"
+          };
+        }
+        return {
+          name: "Dewi Lestari, S.E.",
+          email: "dewi.lestari@forsdig.com"
+        };
+      };
+
+      const recipient = getRecipientInfo(disp.targetRole);
+      const senderRole = currentUser?.role || "Super Admin";
+      const emailSubject = `[DISPOSISI BARU - ${disp.priority.toUpperCase()}] ${newDisp.letterSubject}`;
+      
+      const emailBody = `Yth. ${recipient.name},
+
+Anda telah menerima Lembaran Disposisi Digital Baru dari ${newDisp.senderName} (${senderRole}).
+
+Berikut adalah rincian instruksi disposisi:
+• Perihal Surat: ${newDisp.letterSubject}
+• Target Delegasi: ${disp.targetRole}
+• Derajat Urgensi: ${disp.priority}
+• Tanggal Disposisi: ${new Date(newDisp.createdAt).toLocaleDateString("id-ID", { weekday: "long", year: "numeric", month: "long", day: "numeric" })}
+
+Catatan & Instruksi Khusus:
+"${disp.notes}"
+
+Mohon segera mengakses Portal e-Office FORSDIG untuk memeriksa lampiran berkas asli dan memberikan laporan progres tindak lanjut.
+
+Hormat kami,
+Sistem Otomatis e-Office FORSDIG`;
+
+      fetch("/api/email/send", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          to: recipient.email,
+          subject: emailSubject,
+          body: emailBody,
+          letterData: {
+            letterNumber: selectedLetter?.letterNumber || "-",
+            letterDate: selectedLetter?.letterDate || "-",
+            recipient: recipient.name,
+            recipientInstitution: disp.targetRole,
+            signatory: newDisp.senderName,
+            verificationCode: newDisp.id,
+            status: "Didisposisi"
+          }
+        })
+      })
+      .then(res => res.json())
+      .then(resp => {
+        if (resp.success) {
+          const isSimulation = resp.deliveryMethod && resp.deliveryMethod.includes("SIMULATION");
+          if (isSimulation) {
+            console.log(`[Email Simulation] Disposition email successfully simulated for ${recipient.email}`);
+          } else {
+            console.log(`[Email Success] Disposition email sent via Resend to ${recipient.email}`);
+          }
+        } else {
+          console.error("Gagal mengirim email disposisi:", resp.error);
+        }
+      })
+      .catch(err => {
+        console.error("Error sending disposition email:", err);
+      });
+    } catch (err) {
+      console.error("Failed to trigger automated disposition email:", err);
+    }
   };
 
   const handleAddLetterOut = (newLetter: Omit<LetterOut, "id" | "createdAt">) => {
@@ -844,11 +948,16 @@ export default function App() {
         <div className="w-full max-w-5xl grid grid-cols-1 md:grid-cols-12 gap-8 z-10" id="login-stage">
           {/* Brand/Hero section column block */}
           <div className="md:col-span-5 flex flex-col justify-center space-y-6 text-slate-800 dark:text-slate-100 pr-0 md:pr-4">
-            <div className="flex items-center space-x-3 text-blue-600 dark:text-blue-450">
-              <Building2 className="h-10 w-10 shrink-0" />
+            <div className="flex flex-col space-y-2">
+              <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-3 rounded-2xl shadow-sm w-fit">
+                {companySetting.companyLogo ? (
+                  <img src={companySetting.companyLogo} alt="Logo" className="h-12 object-contain" referrerPolicy="no-referrer" />
+                ) : (
+                  <FgiLogo size={42} />
+                )}
+              </div>
               <div className="font-sans font-extrabold tracking-tight">
-                <span className="text-xl md:text-2xl block leading-none">FORSDIG</span>
-                <span className="text-xs tracking-widest text-slate-400 block uppercase mt-1">e-Office System</span>
+                <span className="text-xs tracking-widest text-slate-400 dark:text-slate-500 block uppercase mt-1">e-Office & Correspondence Hub</span>
               </div>
             </div>
 
@@ -988,9 +1097,17 @@ export default function App() {
         <div className="space-y-6">
           {/* Logo container brand */}
           <div className="p-6 border-b border-blue-800 flex justify-between items-center">
-            <div className="flex items-center space-x-3">
-              <div className="w-8 h-8 bg-blue-400 rounded-lg flex items-center justify-center font-bold text-blue-900">F</div>
-              <span className="font-bold text-lg tracking-tight">FORSDIG <span className="font-light opacity-80">OFFICE</span></span>
+            <div className="flex items-center space-x-2">
+              <div className="bg-white p-1 rounded-lg">
+                {companySetting.companyLogo ? (
+                  <img src={companySetting.companyLogo} alt="Logo" className="h-6 max-w-[110px] object-contain" referrerPolicy="no-referrer" />
+                ) : (
+                  <FgiLogo size={20} />
+                )}
+              </div>
+              {!companySetting.companyLogo && (
+                <span className="font-bold text-sm tracking-tight">FORSDIG <span className="font-light opacity-80">OFFICE</span></span>
+              )}
             </div>
 
             <button onClick={() => setIsDark(!isDark)} className="p-1 px-1.5 hover:bg-blue-800 rounded text-blue-200 hover:text-white transition-colors">

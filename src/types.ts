@@ -114,4 +114,5 @@ export interface CompanySetting {
   smtpHost: string;
   smtpPort: number;
   smtpUser: string;
+  companyLogo?: string; // Base64 or URL of the corporate logo
 }

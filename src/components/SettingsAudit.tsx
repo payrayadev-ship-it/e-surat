@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from "react";
-import { Settings, Shield, Key, Mail, RefreshCw, Layers, Edit3, Trash, UserCheck, Smartphone, Sparkles, AlertTriangle, ShieldAlert, CheckCircle, Database } from "lucide-react";
+import { Settings, Shield, Key, Mail, RefreshCw, Layers, Edit3, Trash, UserCheck, Smartphone, Sparkles, AlertTriangle, ShieldAlert, CheckCircle, Database, Upload, Trash2 } from "lucide-react";
 import { CompanySetting, AuditLog, UserRole, UserProfile } from "../types";
 import { collection, getDocs, addDoc, query, orderBy, limit } from "firebase/firestore";
 import { db, auth } from "../firebase";
+import FgiLogo from "./FgiLogo";
 
 interface SettingsAuditProps {
   companySetting: CompanySetting;
@@ -29,6 +30,7 @@ export default function SettingsAudit({
   const [companyPhone, setCompanyPhone] = useState(companySetting.companyPhone);
   const [companyEmail, setCompanyEmail] = useState(companySetting.companyEmail);
   const [numberFormat, setNumberFormat] = useState(companySetting.letterNumberFormat);
+  const [companyLogo, setCompanyLogo] = useState<string | undefined>(companySetting.companyLogo);
 
   // Form states - SMTP
   const [smtpHost, setSmtpHost] = useState(companySetting.smtpHost || "smtp.gmail.com");
@@ -190,7 +192,8 @@ export default function SettingsAudit({
       companyAddress,
       companyPhone,
       companyEmail,
-      letterNumberFormat: numberFormat
+      letterNumberFormat: numberFormat,
+      companyLogo: companyLogo
     });
     alert("Konfigurasi profil korporat PT. Foresyndo Global Indonesia berhasil diperbarui!");
   };
@@ -340,6 +343,59 @@ export default function SettingsAudit({
                   onChange={(e) => setCompanyAddress(e.target.value)}
                   className="w-full p-2 border border-slate-200 dark:border-slate-800 rounded bg-slate-50 dark:bg-slate-950 text-slate-850 dark:text-slate-100"
                 />
+              </div>
+
+              {/* Logo Upload Segment */}
+              <div className="md:col-span-2 border border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-950/20 p-4 rounded-xl space-y-4">
+                <span className="block text-xs font-bold text-slate-650 dark:text-slate-350 uppercase tracking-wider font-mono">Logo Resmi Perusahaan</span>
+                <div className="flex flex-col sm:flex-row items-center gap-6">
+                  {/* Current Logo Render Box */}
+                  <div className="w-40 h-16 border border-slate-200 dark:border-slate-800 rounded-lg flex items-center justify-center p-2 bg-white dark:bg-slate-950 shadow-inner overflow-hidden">
+                    {companyLogo ? (
+                      <img src={companyLogo} alt="Corporate Logo" className="max-w-full max-h-full object-contain" referrerPolicy="no-referrer" />
+                    ) : (
+                      <FgiLogo size={32} />
+                    )}
+                  </div>
+
+                  {/* Actions & File Pickers */}
+                  <div className="flex-1 space-y-2 w-full text-center sm:text-left">
+                    <p className="text-xs text-slate-500">Unggah berkas gambar logo resmi perusahaan untuk disematkan di KOP surat menyurat digital dan dokumen PDF (disarankan aspek rasio memanjang, format PNG transparan).</p>
+                    <div className="flex flex-wrap gap-2 justify-center sm:justify-start">
+                      <label className="bg-blue-600 hover:bg-blue-700 text-white font-bold px-3 py-1.5 rounded text-xs transition-colors cursor-pointer flex items-center space-x-1">
+                        <Upload className="h-3.5 w-3.5" />
+                        <span>Pilih Berkas Logo</span>
+                        <input
+                          type="file"
+                          accept="image/*"
+                          className="hidden"
+                          onChange={(e) => {
+                            const file = e.target.files?.[0];
+                            if (file) {
+                              const reader = new FileReader();
+                              reader.onload = (event) => {
+                                if (event.target?.result) {
+                                  setCompanyLogo(event.target.result as string);
+                                }
+                              };
+                              reader.readAsDataURL(file);
+                            }
+                          }}
+                        />
+                      </label>
+                      {companyLogo && (
+                        <button
+                          type="button"
+                          onClick={() => setCompanyLogo(undefined)}
+                          className="bg-red-500 hover:bg-red-600 text-white font-bold px-3 py-1.5 rounded text-xs transition-colors flex items-center space-x-1"
+                        >
+                          <Trash2 className="h-3.5 w-3.5" />
+                          <span>Gunakan Default (FGI)</span>
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                </div>
               </div>
             </div>
 

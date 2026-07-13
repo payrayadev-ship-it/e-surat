@@ -576,7 +576,7 @@ Harap pastikan output Anda mematuhi skema JSON di atas dengan sempurna. Jangan m
 
   // E-mail Outgoing Logs Handler / Resend Dispatch Route
   app.post("/api/email/send", async (req, res) => {
-    const { to, subject, body, attachmentName, letterData } = req.body;
+    const { to, subject, body, attachmentName, pdfData, letterData } = req.body;
     if (!to || !subject) {
       return res.status(400).json({ error: "Recipient and subject are required" });
     }
@@ -790,11 +790,20 @@ Harap pastikan output Anda mematuhi skema JSON di atas dengan sempurna. Jangan m
       if (resend) {
         console.log(`[RESEND ENGINE] Transmitting email to ${to} via official Resend SMTP Gateway...`);
         
+        const attachments = [];
+        if (pdfData && attachmentName) {
+          attachments.push({
+            filename: attachmentName,
+            content: Buffer.from(pdfData, "base64"),
+          });
+        }
+
         const response = await resend.emails.send({
           from: "FGI Office <noreply@foresyndoglobalindonesia.my.id>",
           to: to,
           subject: subject,
           html: emailHtmlContent,
+          attachments: attachments,
         });
 
         console.log("[RESEND ENGINE] Dispatch success response data:", response);

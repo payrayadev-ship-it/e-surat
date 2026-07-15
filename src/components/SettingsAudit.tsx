@@ -750,7 +750,7 @@ export default function SettingsAudit({
               )}
             </div>
 
-            <div className="border border-slate-200 dark:border-slate-800 rounded-lg overflow-hidden text-xs max-h-[320px] overflow-y-auto" id="audit-table-viewport">
+            <div className="border border-slate-200 dark:border-slate-800 rounded-lg overflow-hidden text-xs max-h-[320px] overflow-y-auto overflow-x-auto w-full" id="audit-table-viewport">
               <table className="w-full text-left border-collapse">
                 <thead className="bg-slate-50 dark:bg-slate-950 text-slate-500 uppercase tracking-wider font-mono text-[10px]">
                   <tr>

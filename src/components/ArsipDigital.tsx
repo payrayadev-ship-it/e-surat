@@ -182,16 +182,16 @@ export default function ArsipDigital({ lettersIn, lettersOut, memos }: ArsipDigi
           />
         </div>
 
-        {/* Urgency Filter */}
+        {/* Kategori Surat Filter */}
         <div className="flex items-center space-x-2">
           <Filter className="h-4 w-4 text-slate-400 inline shrink-0" />
           <select
             value={urgencyFilter}
             onChange={(e) => setUrgencyFilter(e.target.value)}
             className="w-full border border-slate-200 dark:border-slate-800 rounded p-1.5 text-xs bg-slate-50 dark:bg-slate-950 text-slate-800 dark:text-slate-100 font-medium"
-            id="filter-sifat-arsip"
+            id="filter-kategori-arsip"
           >
-            <option value="Semua">Semua Sifat Surat</option>
+            <option value="Semua">Semua Kategori (Biasa, Penting, Rahasia)</option>
             <option value="Biasa">Biasa</option>
             <option value="Penting">Penting</option>
             <option value="Rahasia">Rahasia</option>

@@ -2,7 +2,7 @@ import React, { useState, useEffect } from "react";
 import { 
   Building2, LayoutDashboard, Mail, Send, MessageSquare, Archive, Settings, QrCode,
   LogOut, Sun, Moon, Sparkles, User, ShieldAlert, CheckCircle, Bell, RefreshCw, Plus,
-  Search, X, ExternalLink, FileDown, Calendar, Tag, Hash, Paperclip, ChevronRight, CornerDownRight, CheckCircle2, AlertTriangle
+  Search, X, ExternalLink, FileDown, Calendar, Tag, Hash, Paperclip, ChevronRight, CornerDownRight, CheckCircle2, AlertTriangle, Menu
 } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
 import { jsPDF } from "jspdf";
@@ -131,6 +131,8 @@ export default function App() {
   });
 
   const [activeTab, setActiveTab] = useState<string>("dashboard");
+  const [isSidebarOpen, setIsSidebarOpen] = useState<boolean>(false);
+  const [isBottomMenuOpen, setIsBottomMenuOpen] = useState<boolean>(false);
   const [initialVerifyCode, setInitialVerifyCode] = useState<string | null>(null);
 
   // Global Search states
@@ -1126,12 +1128,9 @@ Sistem Otomatis e-Office FORSDIG`;
     }
   };
 
-  return (
-    <div className="min-h-screen bg-slate-50 dark:bg-slate-950 transition-colors flex flex-col md:flex-row text-slate-800 dark:text-slate-200" id="main-viewport-stage">
-      
-      {/* Sidebar Navigation */}
-      <aside className="w-full md:w-60 bg-blue-900 border-b md:border-b-0 md:border-r border-blue-800 text-white shrink-0 flex flex-col justify-between" id="sidebar">
-        
+  const renderSidebarContent = (isDrawer = false) => {
+    return (
+      <div className="h-full flex flex-col justify-between">
         {/* Upper Side brand & items */}
         <div className="space-y-6">
           {/* Logo container brand */}
@@ -1145,21 +1144,34 @@ Sistem Otomatis e-Office FORSDIG`;
                 )}
               </div>
               {!companySetting.companyLogo && (
-                <span className="font-bold text-sm tracking-tight">FORSDIG <span className="font-light opacity-80">OFFICE</span></span>
+                <span className="font-bold text-sm tracking-tight text-white">FORSDIG <span className="font-light opacity-80">OFFICE</span></span>
               )}
             </div>
 
-            <button onClick={() => setIsDark(!isDark)} className="p-1 px-1.5 hover:bg-blue-800 rounded text-blue-200 hover:text-white transition-colors">
-              {isDark ? <Sun className="h-4 w-4 text-amber-400" /> : <Moon className="h-4 w-4 text-slate-350" />}
-            </button>
+            {isDrawer ? (
+              <button 
+                onClick={() => setIsSidebarOpen(false)}
+                className="p-1.5 hover:bg-blue-800/80 rounded text-blue-200 hover:text-white transition-colors cursor-pointer"
+                title="Tutup Navigasi"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            ) : (
+              <button onClick={() => setIsDark(!isDark)} className="p-1 px-1.5 hover:bg-blue-800 rounded text-blue-200 hover:text-white transition-colors cursor-pointer">
+                {isDark ? <Sun className="h-4 w-4 text-amber-400" /> : <Moon className="h-4 w-4 text-slate-350" />}
+              </button>
+            )}
           </div>
 
           {/* Navigation link sets */}
           <nav className="px-4 space-y-1" id="major-nav-bar">
             {/* Dashboard Tab */}
             <button 
-              onClick={() => setActiveTab("dashboard")}
-              className={`w-full flex items-center space-x-3 px-3 py-2 rounded-lg text-xs font-semibold text-left transition-all ${
+              onClick={() => {
+                setActiveTab("dashboard");
+                if (isDrawer) setIsSidebarOpen(false);
+              }}
+              className={`w-full flex items-center space-x-3 px-3 py-2 rounded-lg text-xs font-semibold text-left transition-all cursor-pointer ${
                 activeTab === "dashboard" ? "bg-blue-800 text-white font-bold" : "text-slate-350 hover:text-white hover:bg-blue-800/50"
               }`}
             >
@@ -1169,8 +1181,11 @@ Sistem Otomatis e-Office FORSDIG`;
 
             {/* Inward Letter Tab */}
             <button 
-              onClick={() => setActiveTab("surat_masuk")}
-              className={`w-full flex items-center space-x-3 px-3 py-2 rounded-lg text-xs font-semibold text-left transition-all ${
+              onClick={() => {
+                setActiveTab("surat_masuk");
+                if (isDrawer) setIsSidebarOpen(false);
+              }}
+              className={`w-full flex items-center space-x-3 px-3 py-2 rounded-lg text-xs font-semibold text-left transition-all cursor-pointer ${
                 activeTab === "surat_masuk" ? "bg-blue-800 text-white font-bold" : "text-slate-350 hover:text-white hover:bg-blue-800/50"
               }`}
               id="sidebar-nav-inbox"
@@ -1182,8 +1197,11 @@ Sistem Otomatis e-Office FORSDIG`;
 
             {/* Outward Letter Tab */}
             <button 
-              onClick={() => setActiveTab("surat_keluar")}
-              className={`w-full flex items-center space-x-3 px-3 py-2 rounded-lg text-xs font-semibold text-left transition-all ${
+              onClick={() => {
+                setActiveTab("surat_keluar");
+                if (isDrawer) setIsSidebarOpen(false);
+              }}
+              className={`w-full flex items-center space-x-3 px-3 py-2 rounded-lg text-xs font-semibold text-left transition-all cursor-pointer ${
                 activeTab === "surat_keluar" ? "bg-blue-800 text-white font-bold" : "text-slate-350 hover:text-white hover:bg-blue-800/50"
               }`}
               id="sidebar-nav-outbox"
@@ -1195,8 +1213,11 @@ Sistem Otomatis e-Office FORSDIG`;
 
             {/* Memos Tab */}
             <button 
-              onClick={() => setActiveTab("memos")}
-              className={`w-full flex items-center space-x-3 px-3 py-2 rounded-lg text-xs font-semibold text-left transition-all ${
+              onClick={() => {
+                setActiveTab("memos");
+                if (isDrawer) setIsSidebarOpen(false);
+              }}
+              className={`w-full flex items-center space-x-3 px-3 py-2 rounded-lg text-xs font-semibold text-left transition-all cursor-pointer ${
                 activeTab === "memos" ? "bg-blue-800 text-white font-bold" : "text-slate-350 hover:text-white hover:bg-blue-800/50"
               }`}
             >
@@ -1206,8 +1227,11 @@ Sistem Otomatis e-Office FORSDIG`;
 
             {/* Digital Archive Tab */}
             <button 
-              onClick={() => setActiveTab("arsip")}
-              className={`w-full flex items-center space-x-3 px-3 py-2 rounded-lg text-xs font-semibold text-left transition-all ${
+              onClick={() => {
+                setActiveTab("arsip");
+                if (isDrawer) setIsSidebarOpen(false);
+              }}
+              className={`w-full flex items-center space-x-3 px-3 py-2 rounded-lg text-xs font-semibold text-left transition-all cursor-pointer ${
                 activeTab === "arsip" ? "bg-blue-800 text-white font-bold" : "text-slate-350 hover:text-white hover:bg-blue-800/50"
               }`}
             >
@@ -1217,8 +1241,11 @@ Sistem Otomatis e-Office FORSDIG`;
 
             {/* AI Kontrak Tab */}
             <button 
-              onClick={() => setActiveTab("ai_kontrak")}
-              className={`w-full flex items-center space-x-3 px-3 py-2 rounded-lg text-xs font-semibold text-left transition-all ${
+              onClick={() => {
+                setActiveTab("ai_kontrak");
+                if (isDrawer) setIsSidebarOpen(false);
+              }}
+              className={`w-full flex items-center space-x-3 px-3 py-2 rounded-lg text-xs font-semibold text-left transition-all cursor-pointer ${
                 activeTab === "ai_kontrak" ? "bg-blue-800 text-white font-bold" : "text-slate-350 hover:text-white hover:bg-blue-800/50"
               }`}
               id="sidebar-nav-ai-kontrak"
@@ -1233,8 +1260,9 @@ Sistem Otomatis e-Office FORSDIG`;
               onClick={() => {
                 setInitialVerifyCode(null);
                 setActiveTab("verification_scanner");
+                if (isDrawer) setIsSidebarOpen(false);
               }}
-              className={`w-full flex items-center space-x-3 px-3 py-2 rounded-lg text-xs font-semibold text-left transition-all ${
+              className={`w-full flex items-center space-x-3 px-3 py-2 rounded-lg text-xs font-semibold text-left transition-all cursor-pointer ${
                 activeTab === "verification_scanner" ? "bg-blue-800 text-white font-bold" : "text-slate-350 hover:text-white hover:bg-blue-800/50"
               }`}
               id="sidebar-nav-verification"
@@ -1245,8 +1273,11 @@ Sistem Otomatis e-Office FORSDIG`;
 
             {/* Settings Tab */}
             <button 
-              onClick={() => setActiveTab("settings")}
-              className={`w-full flex items-center space-x-3 px-3 py-2 rounded-lg text-xs font-semibold text-left transition-all ${
+              onClick={() => {
+                setActiveTab("settings");
+                if (isDrawer) setIsSidebarOpen(false);
+              }}
+              className={`w-full flex items-center space-x-3 px-3 py-2 rounded-lg text-xs font-semibold text-left transition-all cursor-pointer ${
                 activeTab === "settings" ? "bg-blue-800 text-white font-bold" : "text-slate-350 hover:text-white hover:bg-blue-800/50"
               }`}
             >
@@ -1259,10 +1290,10 @@ Sistem Otomatis e-Office FORSDIG`;
         {/* Brand User Profile Footer strip */}
         <div className="p-4 border-t border-blue-800 w-full flex items-center justify-between" id="user-footer">
           <div className="flex items-center gap-3 min-w-0">
-            <img src={currentUser.avatarUrl} alt={currentUser.name} className="w-10 h-10 rounded-full object-cover border-2 border-blue-400 shrink-0" />
+            <img src={currentUser?.avatarUrl} alt={currentUser?.name} className="w-10 h-10 rounded-full object-cover border-2 border-blue-400 shrink-0" />
             <div className="min-w-0">
-              <p className="text-xs font-bold text-white truncate">{currentUser.name.split(",")[0]}</p>
-              <p className="text-[10px] opacity-65 truncate">{currentUser.role}</p>
+              <p className="text-xs font-bold text-white truncate">{currentUser?.name.split(",")[0]}</p>
+              <p className="text-[10px] opacity-65 truncate">{currentUser?.role}</p>
             </div>
           </div>
 
@@ -1274,171 +1305,432 @@ Sistem Otomatis e-Office FORSDIG`;
             <LogOut className="h-4 w-4" />
           </button>
         </div>
-      </aside>
+      </div>
+    );
+  };
 
-      {/* Main Content Area */}
-      <main className="flex-1 flex flex-col min-w-0 overflow-hidden" id="main-content">
-        {/* Top Header */}
-        <header className="h-16 bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between px-8 shrink-0">
-          <div className="flex items-center gap-2">
-            <span className="text-slate-400 text-xs md:text-sm">Pages</span>
-            <span className="text-slate-400 text-xs md:text-sm">/</span>
-            <span className="font-medium text-xs md:text-sm text-slate-800 dark:text-white">{getTabLabel()}</span>
-          </div>
-          <div className="flex items-center gap-6">
-            <div className="relative">
-              <div className="relative flex items-center">
-                <Search className="absolute left-3.5 h-3.5 w-3.5 text-slate-400 pointer-events-none" />
-                <input 
-                  type="text" 
-                  placeholder="Cari surat..." 
-                  value={searchQuery}
-                  onChange={(e) => {
-                    setSearchQuery(e.target.value);
-                    setIsSearchFocused(true);
-                  }}
-                  onFocus={() => setIsSearchFocused(true)}
-                  className="bg-slate-100 dark:bg-slate-950 border border-transparent focus:border-blue-500 rounded-full py-1.5 pl-9 pr-8 text-xs w-48 sm:w-64 focus:ring-2 focus:ring-blue-500/20 text-slate-700 dark:text-slate-300 outline-none transition-all"
-                />
-                {searchQuery && (
-                  <button 
-                    onClick={() => setSearchQuery("")}
-                    className="absolute right-3 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200"
-                  >
-                    <X className="h-3 w-3" />
-                  </button>
-                )}
-              </div>
-
-              {/* Backdrop overlay to dismiss dropdown */}
-              {isSearchFocused && searchQuery.trim() && (
-                <div 
-                  className="fixed inset-0 z-40 bg-transparent" 
-                  onClick={() => setIsSearchFocused(false)} 
-                />
-              )}
-
-              {/* Search Results Dropdown Popover */}
-              {isSearchFocused && searchQuery.trim() && (
-                <div className="absolute right-0 top-10 mt-1 w-80 sm:w-96 md:w-[480px] bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl shadow-2xl z-50 max-h-[420px] overflow-hidden flex flex-col">
-                  {/* Results Count Header */}
-                  <div className="px-4 py-2.5 bg-slate-50 dark:bg-slate-850 border-b border-slate-200 dark:border-slate-800/60 flex justify-between items-center shrink-0">
-                    <span className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider">Hasil Pencarian</span>
-                    <span className="text-[11px] font-bold text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-950/40 px-2 py-0.5 rounded-full">
-                      {totalMatches} ditemukan
-                    </span>
-                  </div>
-
-                  {/* List Content */}
-                  <div className="flex-1 overflow-y-auto divide-y divide-slate-100 dark:divide-slate-800/60">
-                    {totalMatches === 0 ? (
-                      <div className="p-8 text-center">
-                        <p className="text-slate-400 text-xs">Tidak ada hasil pencarian untuk &ldquo;<span className="font-semibold text-slate-600 dark:text-slate-200">{searchQuery}</span>&rdquo;</p>
-                        <p className="text-[10px] text-slate-400 mt-1">Coba kata kunci lain atau periksa ejaan Anda.</p>
-                      </div>
-                    ) : (
-                      <>
-                        {/* SURAT MASUK */}
-                        {matchedIn.length > 0 && (
-                          <div>
-                            <div className="px-4 py-1.5 bg-slate-50/55 dark:bg-slate-850/30 text-[9px] font-extrabold text-blue-600 dark:text-blue-400 uppercase tracking-widest sticky top-0 backdrop-blur-xs">
-                              Surat Masuk ({matchedIn.length})
-                            </div>
-                            {matchedIn.map(item => (
-                              <div 
-                                key={item.id}
-                                onClick={() => {
-                                  setSelectedSearchLetter({ letter: item, type: "in" });
-                                  setIsSearchFocused(false);
-                                }}
-                                className="p-3 hover:bg-slate-50 dark:hover:bg-slate-800/60 cursor-pointer transition-colors flex items-start gap-3"
-                              >
-                                <div className="p-2 bg-blue-50 dark:bg-blue-950/60 text-blue-600 dark:text-blue-400 rounded-lg shrink-0 mt-0.5">
-                                  <Mail className="h-3.5 w-3.5" />
-                                </div>
-                                <div className="min-w-0 flex-1">
-                                  <div className="flex items-center justify-between gap-2">
-                                    <span className="text-[9px] font-mono text-slate-400 truncate">{item.letterNumber}</span>
-                                    <span className="px-1.5 py-0.25 rounded text-[8px] font-bold bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300 uppercase shrink-0 scale-90">
-                                      {item.urgency || "Biasa"}
-                                    </span>
-                                  </div>
-                                  <p className="text-xs font-semibold text-slate-800 dark:text-slate-100 truncate mt-0.5">{item.subject}</p>
-                                  <p className="text-[10px] text-slate-500 dark:text-slate-400 mt-1 flex items-center gap-1">
-                                    <span className="font-medium text-slate-600 dark:text-slate-300">Dari:</span> 
-                                    <span className="truncate">{item.sender} - {item.senderInstitution}</span>
-                                  </p>
-                                </div>
-                              </div>
-                            ))}
-                          </div>
-                        )}
-
-                        {/* SURAT KELUAR */}
-                        {matchedOut.length > 0 && (
-                          <div>
-                            <div className="px-4 py-1.5 bg-slate-50/55 dark:bg-slate-850/30 text-[9px] font-extrabold text-indigo-600 dark:text-indigo-400 uppercase tracking-widest sticky top-0 backdrop-blur-xs">
-                              Surat Keluar ({matchedOut.length})
-                            </div>
-                            {matchedOut.map(item => (
-                              <div 
-                                key={item.id}
-                                onClick={() => {
-                                  setSelectedSearchLetter({ letter: item, type: "out" });
-                                  setIsSearchFocused(false);
-                                }}
-                                className="p-3 hover:bg-slate-50 dark:hover:bg-slate-800/60 cursor-pointer transition-colors flex items-start gap-3"
-                              >
-                                <div className="p-2 bg-indigo-50 dark:bg-indigo-950/60 text-indigo-600 dark:text-indigo-400 rounded-lg shrink-0 mt-0.5">
-                                  <Send className="h-3.5 w-3.5" />
-                                </div>
-                                <div className="min-w-0 flex-1">
-                                  <div className="flex items-center justify-between gap-2">
-                                    <span className="text-[9px] font-mono text-slate-400 truncate">{item.letterNumber}</span>
-                                    <span className="px-1.5 py-0.25 rounded text-[8px] font-bold bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300 uppercase shrink-0 scale-90">
-                                      {item.status || "Draft"}
-                                    </span>
-                                  </div>
-                                  <p className="text-xs font-semibold text-slate-800 dark:text-slate-100 truncate mt-0.5">{item.subject}</p>
-                                  <p className="text-[10px] text-slate-500 dark:text-slate-400 mt-1 flex items-center gap-1">
-                                    <span className="font-medium text-slate-600 dark:text-slate-300">Kepada:</span> 
-                                    <span className="truncate">{item.recipient} - {item.recipientInstitution}</span>
-                                  </p>
-                                </div>
-                              </div>
-                            ))}
-                          </div>
-                        )}
-                      </>
-                    )}
+  return (
+    <div className="min-h-screen bg-slate-100 dark:bg-slate-905 flex justify-center items-center w-full" id="main-viewport-stage">
+      
+      {/* Mobile Bottom Sheet Menu (More Drawer) */}
+      <AnimatePresence>
+        {isBottomMenuOpen && (
+          <div className="fixed inset-0 z-50 md:hidden flex flex-col justify-end">
+            {/* Backdrop */}
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 0.5 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setIsBottomMenuOpen(false)}
+              className="absolute inset-0 bg-black/60 backdrop-blur-xs"
+            />
+            
+            {/* Bottom Sheet Tray */}
+            <motion.div
+              initial={{ y: "100%" }}
+              animate={{ y: 0 }}
+              exit={{ y: "100%" }}
+              transition={{ type: "spring", damping: 25, stiffness: 220 }}
+              className="relative w-full max-w-[430px] mx-auto bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-200 rounded-t-2xl shadow-2xl z-10 overflow-hidden border-t border-slate-200 dark:border-slate-800 pb-20"
+            >
+              {/* Drag Handle accent */}
+              <div className="w-12 h-1.5 bg-slate-200 dark:bg-slate-850 rounded-full mx-auto my-3" />
+              
+              {/* Profile Header */}
+              <div className="px-5 pb-4 border-b border-slate-100 dark:border-slate-850/60 flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <img src={currentUser?.avatarUrl} alt={currentUser?.name} className="w-11 h-11 rounded-full object-cover border-2 border-blue-500 shadow-sm" referrerPolicy="no-referrer" />
+                  <div>
+                    <h4 className="text-xs font-bold text-slate-800 dark:text-slate-200">{currentUser?.name}</h4>
+                    <p className="text-[10px] text-slate-400 font-medium">{currentUser?.role}</p>
                   </div>
                 </div>
-              )}
-            </div>
-            <div className="flex items-center gap-3">
-              <button className="p-2 text-slate-400 hover:text-blue-600">
-                <Bell className="w-5 h-5" />
-              </button>
-              <button 
-                onClick={() => {
-                  if (activeTab !== "surat_masuk" && activeTab !== "surat_keluar") {
-                    setActiveTab("surat_masuk");
-                  }
-                }}
-                className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-1.5 rounded-lg font-medium text-xs flex items-center gap-2 cursor-pointer transition-colors"
-              >
-                <Plus className="w-4 h-4" />
-                <span>Buat Surat</span>
-              </button>
-            </div>
-          </div>
-        </header>
+                
+                {/* Theme toggle & close buttons */}
+                <div className="flex items-center gap-2">
+                  <button 
+                    onClick={() => setIsDark(!isDark)} 
+                    className="p-2 bg-slate-50 dark:bg-slate-850 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-full text-slate-600 dark:text-slate-300 transition-colors cursor-pointer"
+                    title="Ubah Tema"
+                  >
+                    {isDark ? <Sun className="h-4 w-4 text-amber-400" /> : <Moon className="h-4 w-4 text-slate-500" />}
+                  </button>
+                  <button 
+                    onClick={() => setIsBottomMenuOpen(false)}
+                    className="p-2 bg-slate-50 dark:bg-slate-850 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-full text-slate-600 dark:text-slate-300 transition-colors cursor-pointer"
+                    title="Tutup Menu"
+                  >
+                    <X className="h-4 w-4" />
+                  </button>
+                </div>
+              </div>
+              
+              {/* Menu Grid - Mobile Banking Tray Layout */}
+              <div className="p-5">
+                <h5 className="text-[10px] font-extrabold text-slate-400 uppercase tracking-wider mb-4">Fitur Tambahan</h5>
+                
+                <div className="grid grid-cols-3 gap-4">
+                  {/* Memo & Rapat */}
+                  <button
+                    onClick={() => {
+                      setActiveTab("memos");
+                      setIsBottomMenuOpen(false);
+                    }}
+                    className={`flex flex-col items-center justify-center p-3 rounded-xl border transition-all cursor-pointer ${
+                      activeTab === "memos" 
+                        ? "bg-blue-50 border-blue-200 dark:bg-blue-950/40 dark:border-blue-900 text-blue-600 dark:text-blue-400" 
+                        : "bg-slate-50 hover:bg-slate-100 dark:bg-slate-850/60 dark:hover:bg-slate-800 border-slate-100 dark:border-transparent"
+                    }`}
+                  >
+                    <div className="p-2 bg-white dark:bg-slate-900 rounded-lg shadow-xs mb-2">
+                      <MessageSquare className="h-5 w-5 text-indigo-500" />
+                    </div>
+                    <span className="text-[10px] font-bold text-center leading-tight">Memo &amp; Rapat</span>
+                  </button>
 
-        {/* Content Viewport */}
-        <div className="flex-1 p-6 md:p-8 overflow-y-auto bg-slate-50 dark:bg-slate-950" id="stage-body">
-          {renderTabContent()}
-        </div>
-      </main>
+                  {/* Arsip Digital */}
+                  <button
+                    onClick={() => {
+                      setActiveTab("arsip");
+                      setIsBottomMenuOpen(false);
+                    }}
+                    className={`flex flex-col items-center justify-center p-3 rounded-xl border transition-all cursor-pointer ${
+                      activeTab === "arsip" 
+                        ? "bg-blue-50 border-blue-200 dark:bg-blue-950/40 dark:border-blue-900 text-blue-600 dark:text-blue-400" 
+                        : "bg-slate-50 hover:bg-slate-100 dark:bg-slate-850/60 dark:hover:bg-slate-800 border-slate-100 dark:border-transparent"
+                    }`}
+                  >
+                    <div className="p-2 bg-white dark:bg-slate-900 rounded-lg shadow-xs mb-2">
+                      <Archive className="h-5 w-5 text-blue-500" />
+                    </div>
+                    <span className="text-[10px] font-bold text-center leading-tight">Arsip Digital</span>
+                  </button>
+
+                  {/* Verifikator TTE Scanner */}
+                  <button
+                    onClick={() => {
+                      setInitialVerifyCode(null);
+                      setActiveTab("verification_scanner");
+                      setIsBottomMenuOpen(false);
+                    }}
+                    className={`flex flex-col items-center justify-center p-3 rounded-xl border transition-all cursor-pointer ${
+                      activeTab === "verification_scanner" 
+                        ? "bg-blue-50 border-blue-200 dark:bg-blue-950/40 dark:border-blue-900 text-blue-600 dark:text-blue-400" 
+                        : "bg-slate-50 hover:bg-slate-100 dark:bg-slate-850/60 dark:hover:bg-slate-800 border-slate-100 dark:border-transparent"
+                    }`}
+                  >
+                    <div className="p-2 bg-white dark:bg-slate-900 rounded-lg shadow-xs mb-2">
+                      <QrCode className="h-5 w-5 text-emerald-500" />
+                    </div>
+                    <span className="text-[10px] font-bold text-center leading-tight font-sans">Scan TTE</span>
+                  </button>
+
+                  {/* Sistem Pengaturan */}
+                  <button
+                    onClick={() => {
+                      setActiveTab("settings");
+                      setIsBottomMenuOpen(false);
+                    }}
+                    className={`flex flex-col items-center justify-center p-3 rounded-xl border transition-all cursor-pointer ${
+                      activeTab === "settings" 
+                        ? "bg-blue-50 border-blue-200 dark:bg-blue-950/40 dark:border-blue-900 text-blue-600 dark:text-blue-400" 
+                        : "bg-slate-50 hover:bg-slate-100 dark:bg-slate-850/60 dark:hover:bg-slate-800 border-slate-100 dark:border-transparent"
+                    }`}
+                  >
+                    <div className="p-2 bg-white dark:bg-slate-900 rounded-lg shadow-xs mb-2">
+                      <Settings className="h-5 w-5 text-slate-500" />
+                    </div>
+                    <span className="text-[10px] font-bold text-center leading-tight">Pengaturan</span>
+                  </button>
+                </div>
+
+                {/* Logout Button */}
+                <div className="mt-6 pt-5 border-t border-slate-100 dark:border-slate-850/60">
+                  <button
+                    onClick={() => {
+                      setIsBottomMenuOpen(false);
+                      handleLogout();
+                    }}
+                    className="w-full flex items-center justify-center gap-2 py-2.5 px-4 bg-rose-50 hover:bg-rose-100 dark:bg-rose-950/30 dark:hover:bg-rose-950/60 text-rose-600 dark:text-rose-400 rounded-xl text-xs font-bold transition-all cursor-pointer border border-rose-100 dark:border-rose-900/40"
+                  >
+                    <LogOut className="h-4 w-4" />
+                    <span>Keluar dari Sesi</span>
+                  </button>
+                </div>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* Mobile Bottom Navigation Bar */}
+      <nav className="fixed bottom-0 left-1/2 -translate-x-1/2 w-full max-w-[430px] h-16 bg-white dark:bg-slate-900 border-t border-slate-200 dark:border-slate-800/80 md:hidden flex items-center justify-around px-2 z-40 shadow-[0_-4px_12px_rgba(0,0,0,0.05)] transition-colors">
+        {/* Home Button */}
+        <button
+          onClick={() => {
+            setActiveTab("dashboard");
+            setIsBottomMenuOpen(false);
+          }}
+          className={`flex flex-col items-center justify-center flex-1 h-full py-1 text-[10px] font-bold transition-all duration-250 cursor-pointer ${
+            activeTab === "dashboard" ? "text-blue-600 dark:text-blue-400" : "text-slate-400 dark:text-slate-500 hover:text-slate-500 dark:hover:text-slate-400"
+          }`}
+        >
+          <LayoutDashboard className={`h-5 w-5 mb-0.5 transition-transform duration-250 ${activeTab === "dashboard" ? "scale-110" : ""}`} />
+          <span>Home</span>
+        </button>
+
+        {/* Surat Masuk Button */}
+        <button
+          onClick={() => {
+            setActiveTab("surat_masuk");
+            setIsBottomMenuOpen(false);
+          }}
+          className={`flex flex-col items-center justify-center flex-1 h-full py-1 text-[10px] font-bold transition-all duration-250 cursor-pointer relative ${
+            activeTab === "surat_masuk" ? "text-blue-600 dark:text-blue-400" : "text-slate-400 dark:text-slate-500 hover:text-slate-500 dark:hover:text-slate-400"
+          }`}
+        >
+          <div className="relative">
+            <Mail className={`h-5 w-5 mb-0.5 transition-transform duration-250 ${activeTab === "surat_masuk" ? "scale-110" : ""}`} />
+            {lettersIn.length > 0 && (
+              <span className="absolute -top-1.5 -right-2 bg-rose-500 text-white font-extrabold text-[8px] leading-none px-1 py-0.5 rounded-full font-mono min-w-[14px] text-center border border-white dark:border-slate-900 shadow-sm animate-pulse">
+                {lettersIn.length}
+              </span>
+            )}
+          </div>
+          <span>Masuk</span>
+        </button>
+
+        {/* Surat Keluar Button */}
+        <button
+          onClick={() => {
+            setActiveTab("surat_keluar");
+            setIsBottomMenuOpen(false);
+          }}
+          className={`flex flex-col items-center justify-center flex-1 h-full py-1 text-[10px] font-bold transition-all duration-250 cursor-pointer relative ${
+            activeTab === "surat_keluar" ? "text-blue-600 dark:text-blue-400" : "text-slate-400 dark:text-slate-500 hover:text-slate-500 dark:hover:text-slate-400"
+          }`}
+        >
+          <div className="relative">
+            <Send className={`h-5 w-5 mb-0.5 transition-transform duration-250 ${activeTab === "surat_keluar" ? "scale-110" : ""}`} />
+            {lettersOut.length > 0 && (
+              <span className="absolute -top-1.5 -right-2 bg-blue-500 text-white font-extrabold text-[8px] leading-none px-1 py-0.5 rounded-full font-mono min-w-[14px] text-center border border-white dark:border-slate-900 shadow-sm">
+                {lettersOut.length}
+              </span>
+            )}
+          </div>
+          <span>Keluar</span>
+        </button>
+
+        {/* AI Kontrak Button */}
+        <button
+          onClick={() => {
+            setActiveTab("ai_kontrak");
+            setIsBottomMenuOpen(false);
+          }}
+          className={`flex flex-col items-center justify-center flex-1 h-full py-1 text-[10px] font-bold transition-all duration-250 cursor-pointer relative ${
+            activeTab === "ai_kontrak" ? "text-amber-500 dark:text-amber-400" : "text-slate-400 dark:text-slate-500 hover:text-slate-500 dark:hover:text-slate-400"
+          }`}
+        >
+          <div className="relative">
+            <Sparkles className={`h-5 w-5 mb-0.5 transition-all duration-250 ${activeTab === "ai_kontrak" ? "scale-110 text-amber-500 dark:text-amber-400 animate-pulse" : "text-slate-400 dark:text-slate-500"}`} />
+            <span className="absolute -top-1.5 -right-2 bg-amber-500 text-white text-[7px] font-extrabold px-1 py-0.25 rounded shadow-sm scale-90">AI</span>
+          </div>
+          <span>AI Legal</span>
+        </button>
+
+        {/* Menu/Lainnya Button */}
+        <button
+          onClick={() => setIsBottomMenuOpen(!isBottomMenuOpen)}
+          className={`flex flex-col items-center justify-center flex-1 h-full py-1 text-[10px] font-bold transition-all duration-250 cursor-pointer ${
+            isBottomMenuOpen ? "text-blue-600 dark:text-blue-400" : "text-slate-400 dark:text-slate-500 hover:text-slate-500 dark:hover:text-slate-400"
+          }`}
+        >
+          <Menu className={`h-5 w-5 mb-0.5 transition-transform duration-250 ${isBottomMenuOpen ? "scale-110 rotate-90" : ""}`} />
+          <span>Menu</span>
+        </button>
+      </nav>
+
+      <div className="w-full max-w-[430px] md:max-w-none md:w-full min-h-screen md:min-h-screen bg-slate-50 dark:bg-slate-950 flex flex-col md:flex-row text-slate-800 dark:text-slate-200 shadow-2xl md:shadow-none border-x border-slate-200 dark:border-slate-800/60 md:border-x-0 relative overflow-hidden">
+        
+        {/* Desktop Sidebar Navigation */}
+        <aside className="hidden md:flex w-60 bg-blue-900 text-white shrink-0 flex-col justify-between" id="sidebar">
+          {renderSidebarContent(false)}
+        </aside>
+
+        {/* Main Content Area */}
+        <main className="flex-1 flex flex-col min-w-0 overflow-hidden" id="main-content">
+          {/* Top Header */}
+          <header className="h-16 bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between px-4 md:px-8 shrink-0">
+            <div className="flex items-center gap-2 min-w-0">
+              {/* Mini Brand Logo on Mobile */}
+              <div className="md:hidden flex items-center space-x-1 mr-1.5 shrink-0 bg-blue-900/10 dark:bg-blue-950/40 p-1.5 rounded-lg border border-blue-500/10 shadow-xs">
+                {companySetting.companyLogo ? (
+                  <img src={companySetting.companyLogo} alt="Logo" className="h-4.5 max-w-[50px] object-contain" referrerPolicy="no-referrer" />
+                ) : (
+                  <div className="text-blue-600 dark:text-blue-400 font-extrabold text-[10px] tracking-tighter">FD</div>
+                )}
+              </div>
+              <span className="text-slate-400 text-xs hidden sm:inline">Pages</span>
+              <span className="text-slate-400 text-xs hidden sm:inline">/</span>
+              <span className="font-bold text-xs md:text-sm text-slate-800 dark:text-white truncate">{getTabLabel()}</span>
+            </div>
+            
+            <div className="flex items-center gap-2 sm:gap-6">
+              <div className="relative">
+                <div className="relative flex items-center">
+                  <Search className="absolute left-3 h-3 w-3 text-slate-400 pointer-events-none" />
+                  <input 
+                    type="text" 
+                    placeholder="Cari surat..." 
+                    value={searchQuery}
+                    onChange={(e) => {
+                      setSearchQuery(e.target.value);
+                      setIsSearchFocused(true);
+                    }}
+                    onFocus={() => setIsSearchFocused(true)}
+                    className="bg-slate-100 dark:bg-slate-950 border border-transparent focus:border-blue-500 rounded-full py-1.5 pl-8 pr-7 text-[11px] w-24 xs:w-32 sm:w-48 md:w-64 focus:ring-2 focus:ring-blue-500/20 text-slate-700 dark:text-slate-300 outline-none transition-all"
+                  />
+                  {searchQuery && (
+                    <button 
+                      onClick={() => setSearchQuery("")}
+                      className="absolute right-2.5 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200"
+                    >
+                      <X className="h-3 w-3" />
+                    </button>
+                  )}
+                </div>
+
+                {/* Backdrop overlay to dismiss dropdown */}
+                {isSearchFocused && searchQuery.trim() && (
+                  <div 
+                    className="fixed inset-0 z-40 bg-transparent" 
+                    onClick={() => setIsSearchFocused(false)} 
+                  />
+                )}
+
+                {/* Search Results Dropdown Popover */}
+                {isSearchFocused && searchQuery.trim() && (
+                  <div className="absolute right-0 top-10 mt-1 w-80 sm:w-96 md:w-[480px] bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl shadow-2xl z-50 max-h-[420px] overflow-hidden flex flex-col">
+                    {/* Results Count Header */}
+                    <div className="px-4 py-2.5 bg-slate-50 dark:bg-slate-850 border-b border-slate-200 dark:border-slate-800/60 flex justify-between items-center shrink-0">
+                      <span className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider">Hasil Pencarian</span>
+                      <span className="text-[11px] font-bold text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-950/40 px-2 py-0.5 rounded-full">
+                        {totalMatches} ditemukan
+                      </span>
+                    </div>
+
+                    {/* List Content */}
+                    <div className="flex-1 overflow-y-auto divide-y divide-slate-100 dark:divide-slate-800/60">
+                      {totalMatches === 0 ? (
+                        <div className="p-8 text-center">
+                          <p className="text-slate-400 text-xs">Tidak ada hasil pencarian untuk &ldquo;<span className="font-semibold text-slate-600 dark:text-slate-200">{searchQuery}</span>&rdquo;</p>
+                          <p className="text-[10px] text-slate-400 mt-1">Coba kata kunci lain atau periksa ejaan Anda.</p>
+                        </div>
+                      ) : (
+                        <>
+                          {/* SURAT MASUK */}
+                          {matchedIn.length > 0 && (
+                            <div>
+                              <div className="px-4 py-1.5 bg-slate-50/55 dark:bg-slate-850/30 text-[9px] font-extrabold text-blue-600 dark:text-blue-400 uppercase tracking-widest sticky top-0 backdrop-blur-xs">
+                                Surat Masuk ({matchedIn.length})
+                              </div>
+                              {matchedIn.map(item => (
+                                <div 
+                                  key={item.id}
+                                  onClick={() => {
+                                    setSelectedSearchLetter({ letter: item, type: "in" });
+                                    setIsSearchFocused(false);
+                                  }}
+                                  className="p-3 hover:bg-slate-50 dark:hover:bg-slate-800/60 cursor-pointer transition-colors flex items-start gap-3"
+                                >
+                                  <div className="p-2 bg-blue-50 dark:bg-blue-950/60 text-blue-600 dark:text-blue-400 rounded-lg shrink-0 mt-0.5">
+                                    <Mail className="h-3.5 w-3.5" />
+                                  </div>
+                                  <div className="min-w-0 flex-1">
+                                    <div className="flex items-center justify-between gap-2">
+                                      <span className="text-[9px] font-mono text-slate-400 truncate">{item.letterNumber}</span>
+                                      <span className="px-1.5 py-0.25 rounded text-[8px] font-bold bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300 uppercase shrink-0 scale-90">
+                                        {item.urgency || "Biasa"}
+                                      </span>
+                                    </div>
+                                    <p className="text-xs font-semibold text-slate-800 dark:text-slate-100 truncate mt-0.5">{item.subject}</p>
+                                    <p className="text-[10px] text-slate-500 dark:text-slate-400 mt-1 flex items-center gap-1">
+                                      <span className="font-medium text-slate-600 dark:text-slate-300">Dari:</span> 
+                                      <span className="truncate">{item.sender} - {item.senderInstitution}</span>
+                                    </p>
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+                          )}
+
+                          {/* SURAT KELUAR */}
+                          {matchedOut.length > 0 && (
+                            <div>
+                              <div className="px-4 py-1.5 bg-slate-50/55 dark:bg-slate-850/30 text-[9px] font-extrabold text-indigo-600 dark:text-indigo-400 uppercase tracking-widest sticky top-0 backdrop-blur-xs">
+                                Surat Keluar ({matchedOut.length})
+                              </div>
+                              {matchedOut.map(item => (
+                                <div 
+                                  key={item.id}
+                                  onClick={() => {
+                                    setSelectedSearchLetter({ letter: item, type: "out" });
+                                    setIsSearchFocused(false);
+                                  }}
+                                  className="p-3 hover:bg-slate-50 dark:hover:bg-slate-800/60 cursor-pointer transition-colors flex items-start gap-3"
+                                >
+                                  <div className="p-2 bg-indigo-50 dark:bg-indigo-950/60 text-indigo-600 dark:text-indigo-400 rounded-lg shrink-0 mt-0.5">
+                                    <Send className="h-3.5 w-3.5" />
+                                  </div>
+                                  <div className="min-w-0 flex-1">
+                                    <div className="flex items-center justify-between gap-2">
+                                      <span className="text-[9px] font-mono text-slate-400 truncate">{item.letterNumber}</span>
+                                      <span className="px-1.5 py-0.25 rounded text-[8px] font-bold bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300 uppercase shrink-0 scale-90">
+                                        {item.status || "Draft"}
+                                      </span>
+                                    </div>
+                                    <p className="text-xs font-semibold text-slate-800 dark:text-slate-100 truncate mt-0.5">{item.subject}</p>
+                                    <p className="text-[10px] text-slate-500 dark:text-slate-400 mt-1 flex items-center gap-1">
+                                      <span className="font-medium text-slate-600 dark:text-slate-300">Kepada:</span> 
+                                      <span className="truncate">{item.recipient} - {item.recipientInstitution}</span>
+                                    </p>
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+                          )}
+                        </>
+                      )}
+                    </div>
+                  </div>
+                )}
+              </div>
+              
+              <div className="flex items-center gap-1.5 sm:gap-3">
+                <button className="p-1.5 text-slate-400 hover:text-blue-600 shrink-0">
+                  <Bell className="w-4.5 h-4.5" />
+                </button>
+                <button 
+                  onClick={() => {
+                    if (activeTab !== "surat_masuk" && activeTab !== "surat_keluar") {
+                      setActiveTab("surat_masuk");
+                    }
+                  }}
+                  className="bg-blue-600 hover:bg-blue-700 text-white px-2.5 py-1.5 rounded-lg font-medium text-[11px] flex items-center gap-1 cursor-pointer transition-colors shrink-0"
+                >
+                  <Plus className="w-3.5 h-3.5" />
+                  <span className="hidden xs:inline">Buat Surat</span>
+                </button>
+              </div>
+            </div>
+          </header>
+
+          {/* Content Viewport */}
+          <div className="flex-1 p-4 md:p-8 pb-20 md:pb-8 overflow-y-auto bg-slate-50 dark:bg-slate-950" id="stage-body">
+            {renderTabContent()}
+          </div>
+        </main>
+      </div>
 
       {/* Modal Quick View Global Search */}
       <AnimatePresence>

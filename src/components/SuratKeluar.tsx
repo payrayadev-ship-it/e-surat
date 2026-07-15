@@ -513,7 +513,7 @@ export default function SuratKeluar({
       if (logoToUse && logoToUse.startsWith("data:image/")) {
         try {
           const format = logoToUse.includes("png") ? "PNG" : "JPEG";
-          doc.addImage(logoToUse, format, 20, 14, 38, 12, undefined, "FAST");
+          doc.addImage(logoToUse, format, 20, 14, 35, 12, undefined, "FAST");
         } catch (logoErr) {
           console.error("Failed to add company logo to PDF in SuratKeluar:", logoErr);
           // Clean vector fallback: Navy blue circle outline with Navy blue FGI text
@@ -537,7 +537,7 @@ export default function SuratKeluar({
       }
 
       // --- 2. Company Name and Details (KOP SURAT) ---
-      const textStartX = 62;
+      const textStartX = 60;
       doc.setTextColor(15, 23, 42); // Navy / Dark slate
       doc.setFont("helvetica", "bold");
       doc.setFontSize(14);
@@ -548,11 +548,11 @@ export default function SuratKeluar({
       doc.setFontSize(8.5);
       
       const addrWithFormat = companySetting.companyAddress;
-      const addressLines = doc.splitTextToSize(addrWithFormat, 140);
-      doc.text(addressLines, textStartX, 24);
+      const addressLines = doc.splitTextToSize(addrWithFormat, 130);
+      doc.text(addressLines, textStartX, 23.5);
       
       // Telephone & email details line
-      const detailsLineY = 24 + (addressLines.length * 3.8);
+      const detailsLineY = 23.5 + (addressLines.length * 3.8);
       
       doc.setFont("helvetica", "bold");
       doc.setTextColor(30, 41, 142);
@@ -560,24 +560,25 @@ export default function SuratKeluar({
       
       doc.setFont("helvetica", "normal");
       doc.setTextColor(100, 116, 139);
-      doc.text(` |  Telp: ${companySetting.companyPhone}  |  Email: ${companySetting.companyEmail}`, textStartX + 47, detailsLineY);
+      const hubTextWidth = doc.getTextWidth("e-Office & Digital Signature Hub");
+      doc.text(` | Telp: ${companySetting.companyPhone} | Email: ${companySetting.companyEmail}`, textStartX + hubTextWidth, detailsLineY);
 
       // --- 3. Premium Double Divider borders ---
       const lineY = detailsLineY + 3.5;
       doc.setDrawColor(30, 41, 142);
-      doc.setLineWidth(1.0);
-      doc.line(20, lineY, 190, lineY);
+      doc.setLineWidth(0.8);
+      doc.line(leftMargin, lineY, rightMargin, lineY);
       
       // Thin slate line
       doc.setDrawColor(148, 163, 184);
-      doc.setLineWidth(0.3);
-      doc.line(20, lineY + 0.95, 190, lineY + 0.95);
+      doc.setLineWidth(0.25);
+      doc.line(leftMargin, lineY + 0.9, rightMargin, lineY + 0.9);
 
       // Page numbering indicator at the very bottom right
       doc.setFont("helvetica", "normal");
-      doc.setFontSize(7.5);
+      doc.setFontSize(8);
       doc.setTextColor(148, 163, 184);
-      doc.text(`Hal ${pageNumber}`, 190, 287, { align: "right" });
+      doc.text(`Hal ${pageNumber}`, rightMargin, 285, { align: "right" });
       
       // Return bottom position of the header
       return lineY + 5;
@@ -593,51 +594,70 @@ export default function SuratKeluar({
     doc.setFont("helvetica", "normal");
     doc.setFontSize(10);
     const dateOutput = `Jakarta, ${letter.letterDate ? formatDateIndo(letter.letterDate) : getCurrentFormattedDate()}`;
-    doc.text(dateOutput, 190, metaY, { align: "right" });
+    doc.text(dateOutput, rightMargin, metaY, { align: "right" });
 
     // --- 5. Letter Metadata Group (Left) with Clean Tabular Columns ---
-    doc.setFont("helvetica", "bold");
-    doc.text("Nomor :", 20, metaY);
-    doc.text("Sifat  :", 20, metaY + 5.5);
-    doc.text("Hal    :", 20, metaY + 11);
+    const labelX = leftMargin;
+    const colonX = leftMargin + 15;
+    const valueX = leftMargin + 18;
 
-    doc.setFont("courier", "bold"); // Courier for authentic serial/routing number feel
-    doc.setFontSize(10.5);
-    doc.setTextColor(30, 41, 142);
-    doc.text(letter.letterNumber, 36, metaY);
-    
-    doc.setFont("helvetica", "normal");
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(9.5);
+    doc.setTextColor(71, 85, 105);
+    doc.text("Nomor", labelX, metaY);
+    doc.text("Sifat", labelX, metaY + 5.5);
+    doc.text("Hal", labelX, metaY + 11);
+
+    doc.text(":", colonX, metaY);
+    doc.text(":", colonX, metaY + 5.5);
+    doc.text(":", colonX, metaY + 11);
+
+    // Nomor value
+    doc.setFont("courier", "bold");
     doc.setFontSize(10);
-    doc.setTextColor(51, 65, 85);
-    doc.text("Biasa / Terbuka", 36, metaY + 5.5);
+    doc.setTextColor(30, 41, 142);
+    doc.text(letter.letterNumber, valueX, metaY);
     
-    // Subject with wrapping
+    // Sifat value
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(9.5);
+    doc.setTextColor(51, 65, 85);
+    doc.text("Biasa / Terbuka", valueX, metaY + 5.5);
+    
+    // Hal value with dynamic wrapping
     doc.setFont("helvetica", "bold");
     doc.setTextColor(15, 23, 42);
-    const subjectWrapped = doc.splitTextToSize(letter.subject, 105);
-    doc.text(subjectWrapped, 36, metaY + 11);
+    const subjectWrapped = doc.splitTextToSize(letter.subject, rightMargin - valueX);
+    doc.text(subjectWrapped, valueX, metaY + 11);
 
-    // --- 6. Recipient Details with Better Padding ---
-    const recipientY = metaY + 13 + (subjectWrapped.length * 4.8);
+    // --- 6. Recipient Details with Dynamic Padding ---
+    const recipientY = metaY + 14 + (subjectWrapped.length * 5.0);
     doc.setFont("helvetica", "normal");
     doc.setFontSize(10);
     doc.setTextColor(71, 85, 105);
-    doc.text("Kepada Yth,", 20, recipientY);
+    doc.text("Kepada Yth,", leftMargin, recipientY);
 
     doc.setFont("helvetica", "bold");
     doc.setTextColor(15, 23, 42);
-    doc.text(letter.recipient, 20, recipientY + 5);
+    doc.text(letter.recipient, leftMargin, recipientY + 5.5);
 
     doc.setFont("helvetica", "normal");
     doc.setTextColor(51, 65, 85);
-    doc.text(letter.recipientInstitution, 20, recipientY + 9.5);
-    doc.text("Di tempat", 20, recipientY + 14);
+    
+    const instText = letter.recipientInstitution || "";
+    let diTempatY = recipientY + 10.5;
+    if (instText.trim()) {
+      const instWrapped = doc.splitTextToSize(instText, contentWidth);
+      doc.text(instWrapped, leftMargin, recipientY + 10.5);
+      diTempatY = recipientY + 10.5 + (instWrapped.length * 4.5);
+    }
+    doc.text("Di tempat", leftMargin, diTempatY);
 
     // --- 7. Content (Body) with Dynamic Spacing & Automatic Multi-Page Flow ---
-    let bodyY = recipientY + 22;
+    let bodyY = diTempatY + 12;
     doc.setFont("times", "normal"); // Times Roman is the golden standard for formal affairs
     doc.setFontSize(11);
-    doc.setTextColor(30, 41, 59); // Crisp deep charcoal body text (less harsh than pure black)
+    doc.setTextColor(15, 23, 42); // Crisp deep charcoal body text (less harsh than pure black)
 
     // Helper to strip HTML tags from rich editor string
     const stripHtml = (htmlStr: string): string => {
@@ -650,7 +670,10 @@ export default function SuratKeluar({
         .replace(/<li>/gi, "• ");
       const tempDiv = document.createElement("div");
       tempDiv.innerHTML = withBreaks;
-      return tempDiv.textContent || tempDiv.innerText || "";
+      let text = tempDiv.textContent || tempDiv.innerText || "";
+      // Replace non-breaking spaces and other common entities that cause jsPDF rendering issues
+      text = text.replace(/\u00a0/g, " ").replace(/&nbsp;/g, " ");
+      return text;
     };
 
     // Substitute template vars
@@ -671,41 +694,78 @@ export default function SuratKeluar({
     const paragraphGap = 6; // Spacing between distinct paragraphs in mm
     const footerSafeZoneY = 210; // Reserve bottom section for Signature and QR block (77mm)
 
-    doc.setTextColor(15, 23, 42);
-
     for (let i = 0; i < paragraphs.length; i++) {
       const pText = paragraphs[i];
-      const pWrappedLines = doc.splitTextToSize(pText, contentWidth);
-      const pHeight = pWrappedLines.length * 5.2; // 5.2mm per line with line height multiplier
+      const pWrappedLines = doc.splitTextToSize(pText, contentWidth) as string[];
+      const pHeight = pWrappedLines.length * 5.25;
 
-      // If rendering this paragraph pushes us beyond the safe zone on current page...
-      if (bodyY + pHeight > (currentPage === 1 ? footerSafeZoneY : 240)) {
-        // Add new page
-        doc.addPage();
-        currentPage++;
-        bodyY = drawLetterhead(currentPage) + 12;
-        doc.setFont("times", "normal");
-        doc.setFontSize(11);
-        doc.setTextColor(15, 23, 42);
+      const limitY = currentPage === 1 ? footerSafeZoneY : 255;
+
+      if (bodyY + pHeight <= limitY) {
+        // Fits perfectly on the current page
+        doc.text(pWrappedLines, leftMargin, bodyY, {
+          align: "justify",
+          maxWidth: contentWidth,
+          lineHeightFactor: 1.35
+        });
+        bodyY += pHeight + paragraphGap;
+      } else {
+        // Does not fit! Let's calculate how many lines we can fit on this page
+        const availableHeight = limitY - bodyY;
+        const linesThatFitCount = Math.floor(availableHeight / 5.25);
+
+        if (linesThatFitCount >= 2) {
+          // If we can fit at least 2 lines, let's split the paragraph to avoid large blank spaces (orphans/widows protection)
+          const firstPart = pWrappedLines.slice(0, linesThatFitCount);
+          const secondPart = pWrappedLines.slice(linesThatFitCount);
+
+          doc.text(firstPart, leftMargin, bodyY, {
+            align: "justify",
+            maxWidth: contentWidth,
+            lineHeightFactor: 1.35
+          });
+
+          doc.addPage();
+          currentPage++;
+          bodyY = drawLetterhead(currentPage) + 12;
+          doc.setFont("times", "normal");
+          doc.setFontSize(11);
+          doc.setTextColor(15, 23, 42);
+
+          doc.text(secondPart, leftMargin, bodyY, {
+            align: "justify",
+            maxWidth: contentWidth,
+            lineHeightFactor: 1.35
+          });
+          bodyY += (secondPart.length * 5.25) + paragraphGap;
+        } else {
+          // If we can't even fit 2 lines, push the whole paragraph to the next page
+          doc.addPage();
+          currentPage++;
+          bodyY = drawLetterhead(currentPage) + 12;
+          doc.setFont("times", "normal");
+          doc.setFontSize(11);
+          doc.setTextColor(15, 23, 42);
+
+          doc.text(pWrappedLines, leftMargin, bodyY, {
+            align: "justify",
+            maxWidth: contentWidth,
+            lineHeightFactor: 1.35
+          });
+          bodyY += pHeight + paragraphGap;
+        }
       }
-
-      // Render paragraph
-      doc.text(pText, leftMargin, bodyY, {
-        align: "justify",
-        maxWidth: contentWidth,
-        lineHeightFactor: 1.35
-      });
-      bodyY += pHeight + paragraphGap;
     }
 
     // --- 8. QR Code and Signatures Footer Grid ---
-    // If we have pushed too far on page block, put signatures on next page to avoid crowding
     let footerY = 228;
-    if (bodyY > 218) {
+    if (bodyY > 238) {
       doc.addPage();
       currentPage++;
       let finalHeaderY = drawLetterhead(currentPage);
-      footerY = finalHeaderY + 25; // Render high up on next page if flowed over
+      footerY = finalHeaderY + 20; // Render with a nice gap on the next page
+    } else {
+      footerY = Math.max(228, bodyY + 12);
     }
 
     // A. Clean Vector QR Code Drawing Box
@@ -722,16 +782,16 @@ export default function SuratKeluar({
     doc.setFillColor(248, 250, 252);
     doc.setDrawColor(203, 213, 225);
     doc.setLineWidth(0.3);
-    doc.roundedRect(20, footerY - 2, 78, qrBoxSize + 8, 2, 2, "FD");
+    doc.roundedRect(leftMargin, footerY - 2, 78, qrBoxSize + 8, 2, 2, "FD");
 
     // Draw small green shield-check "DOKUMEN ASLI SAH" badge inside container
     doc.setFillColor(16, 185, 129); // Emerald Green
-    doc.circle(26, footerY + 2.5, 1.8, "F");
+    doc.circle(leftMargin + 6, footerY + 2.5, 1.8, "F");
     
     doc.setTextColor(16, 185, 129);
     doc.setFont("helvetica", "bold");
     doc.setFontSize(7.5);
-    doc.text("DOKUMEN TERVERIFIKASI SAH", 29.5, footerY + 3.2);
+    doc.text("DOKUMEN TERVERIFIKASI SAH", leftMargin + 9.5, footerY + 3.2);
 
     // Matrix QR Code Rendering loops
     doc.setFillColor(15, 23, 42); // Pure deep charcoal QR code pixels
@@ -748,7 +808,7 @@ export default function SuratKeluar({
       return isPosAnchor(r, c);
     };
 
-    const startQRX = 24;
+    const startQRX = leftMargin + 4;
     const startQRY = footerY + 6.5;
 
     for (let r = 0; r < size; r++) {
@@ -768,7 +828,7 @@ export default function SuratKeluar({
     }
 
     // QR Code Metadata descriptions
-    const qrDescX = 24 + qrBoxSize + 4;
+    const qrDescX = leftMargin + 4 + qrBoxSize + 4;
     doc.setTextColor(30, 41, 59);
     doc.setFont("helvetica", "bold");
     doc.setFontSize(7.5);
@@ -787,7 +847,7 @@ export default function SuratKeluar({
     doc.text("dan audit log pelacakan instansi.", qrDescX, footerY + 27);
 
     // B. Corporate Right Sign-stamp Signatory block
-    const signX = 145;
+    const signX = 140;
     doc.setTextColor(15, 23, 42);
     doc.setFont("helvetica", "normal");
     doc.setFontSize(9.5);
@@ -879,30 +939,36 @@ export default function SuratKeluar({
       } catch {
         // Draw elegant vector handwriting loops fallback
         doc.setDrawColor(30, 41, 142);
-        doc.setLineWidth(0.5);
-        doc.line(signX, footerY + 12, signX + 22, footerY + 14);
-        doc.line(signX + 4, footerY + 14, signX + 13, footerY + 9);
-        doc.line(signX + 8, footerY + 8, signX + 26, footerY + 13);
-        doc.circle(signX + 18, footerY + 11, 2);
+        doc.setLineWidth(0.65);
+        doc.line(signX + 2, footerY + 14, signX + 10, footerY + 8);
+        doc.line(signX + 10, footerY + 8, signX + 14, footerY + 16);
+        doc.line(signX + 14, footerY + 16, signX + 22, footerY + 10);
+        doc.line(signX + 22, footerY + 10, signX + 32, footerY + 15);
+        doc.line(signX - 2, footerY + 13, signX + 36, footerY + 12);
+        doc.circle(signX + 6, footerY + 11, 1.8);
       }
     } else if (letter.signatureEnabled) {
       // Draw elegant vector handwriting loops fallback
       doc.setDrawColor(30, 41, 142);
-      doc.setLineWidth(0.5);
-      doc.line(signX, footerY + 12, signX + 22, footerY + 14);
-      doc.line(signX + 4, footerY + 14, signX + 13, footerY + 9);
-      doc.line(signX + 8, footerY + 8, signX + 26, footerY + 13);
-      doc.circle(signX + 18, footerY + 11, 2);
+      doc.setLineWidth(0.65);
+      doc.line(signX + 2, footerY + 14, signX + 10, footerY + 8);
+      doc.line(signX + 10, footerY + 8, signX + 14, footerY + 16);
+      doc.line(signX + 14, footerY + 16, signX + 22, footerY + 10);
+      doc.line(signX + 22, footerY + 10, signX + 32, footerY + 15);
+      doc.line(signX - 2, footerY + 13, signX + 36, footerY + 12);
+      doc.circle(signX + 6, footerY + 11, 1.8);
     }
 
     doc.setFont("helvetica", "bold");
     doc.setFontSize(10);
     doc.setTextColor(15, 23, 42);
-    doc.text(letter.signatory, signX, footerY + 22.8);
+    const signatoryName = letter.signatory || "";
+    const nameWidth = doc.getTextWidth(signatoryName);
+    doc.text(signatoryName, signX, footerY + 22.8);
     
     doc.setLineWidth(0.35);
     doc.setDrawColor(15, 23, 42);
-    doc.line(signX, footerY + 23.4, signX + 44, footerY + 23.4);
+    doc.line(signX, footerY + 23.4, signX + Math.max(40, nameWidth), footerY + 23.4);
 
     doc.setFont("helvetica", "normal");
     doc.setFontSize(8.5);
@@ -2321,13 +2387,21 @@ export default function SuratKeluar({
                     </div>
 
                     {/* Subtitle / Agenda dates */}
-                    <div className="flex justify-between items-start text-xs sm:text-sm font-sans font-medium mb-6">
-                      <div className="space-y-1">
-                        <p>Nomor : <span className="font-semibold font-mono tracking-tight text-indigo-700">{selectedLetter.letterNumber}</span></p>
-                        <p>Sifat  : Biasa / Terbuka</p>
-                        <p>Hal    : <span className="font-semibold text-slate-900">{selectedLetter.subject}</span></p>
+                    <div className="flex justify-between items-start text-xs sm:text-sm font-sans font-medium mb-6 gap-4">
+                      <div className="grid grid-cols-[auto_16px_1fr] text-slate-650 shrink text-left">
+                        <span className="text-slate-400 font-bold">Nomor</span>
+                        <span className="text-slate-400 font-bold text-center">:</span>
+                        <span className="font-mono font-bold tracking-tight text-indigo-700">{selectedLetter.letterNumber}</span>
+
+                        <span className="text-slate-400 font-bold mt-1">Sifat</span>
+                        <span className="text-slate-400 font-bold text-center mt-1">:</span>
+                        <span className="text-slate-700 font-normal mt-1">Biasa / Terbuka</span>
+
+                        <span className="text-slate-400 font-bold mt-1">Hal</span>
+                        <span className="text-slate-400 font-bold text-center mt-1">:</span>
+                        <span className="text-slate-900 font-bold mt-1 text-wrap break-words">{selectedLetter.subject}</span>
                       </div>
-                      <div>
+                      <div className="shrink-0 text-right text-slate-800 font-medium">
                         <p>Jakarta, {selectedLetter.letterDate ? formatDateIndo(selectedLetter.letterDate) : getCurrentFormattedDate()}</p>
                       </div>
                     </div>

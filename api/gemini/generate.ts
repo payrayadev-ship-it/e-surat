@@ -49,7 +49,23 @@ export default async function handler(req: any, res: any) {
       console.log("No Gemini API key detected, serving rich mock template fallback.");
       
       const lowerPrompt = prompt.toLowerCase();
-      if (lowerPrompt.includes("ringkas") || lowerPrompt.includes("summary") || lowerPrompt.includes("notulen") || lowerPrompt.includes("analisis")) {
+      
+      // Smart check if the prompt asks for a structured meeting notulen JSON
+      if (lowerPrompt.includes("notulen") || lowerPrompt.includes("agenda") || lowerPrompt.includes("results") || lowerPrompt.includes("actions")) {
+        const fallbackJSON = {
+          agenda: "Membahas progres implementasi sistem e-Office, kesiapan modul Tanda Tangan Elektronik (TTE), sinkronisasi QR Code, dan migrasi basis data digital.",
+          results: "1. Modul TTE disetujui untuk uji coba UAT mulai Senin depan.\n2. Tim IT akan menyelesaikan integrasi API eksternal dalam 3 hari kerja.\n3. Skema penyimpanan cloud direvisi menggunakan enkripsi penuh.",
+          actions: "1. Bagian Umum: Menyiapkan sosialisasi penggunaan e-Office ke seluruh divisi.\n2. Tim Developer: Melakukan deployment versi sandbox pada hari Jumat.\n3. Admin Sistem: Menyiapkan Berita Acara Serah Terima (BAST) dokumen."
+        };
+        return res.json({
+          success: true,
+          fallback: true,
+          text: JSON.stringify(fallbackJSON),
+          error: null
+        });
+      }
+      
+      if (lowerPrompt.includes("ringkas") || lowerPrompt.includes("summary") || lowerPrompt.includes("analisis")) {
         return res.json({
           success: true,
           fallback: true,

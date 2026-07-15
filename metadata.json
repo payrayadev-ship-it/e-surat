@@ -1,6 +1,6 @@
 {
   "name": "Forsdig Office",
   "description": "Aplikasi profesional pengelolaan surat masuk, surat keluar, disposisi elektronik, memo internal, serta kearsipan dokumen digital perusahaan.",
-  "requestFramePermissions": ["microphone"],
+  "requestFramePermissions": ["microphone", "camera"],
   "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
 }

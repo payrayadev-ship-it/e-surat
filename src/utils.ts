@@ -1,67 +1,49 @@
+import QRCode from "qrcode";
 import { LetterIn, LetterOut, Memo, Meeting, CompanySetting, AuditLog, Disposition } from "./types";
 
 /**
- * Procedural Vector QR Code (matrix) generator.
- * Creates an elegant corporate-grade 2D vector puzzle grid block dynamically using simple modulo hashing,
- * ensuring clean SVG-rendering without slow package load times.
+ * Real Vector QR Code generator using standard qrcode package.
+ * Generates highly scannable, valid QR code SVG paths dynamically.
  */
 export function generateVerificationQR(code: string, width = 120, height = 120): string {
-  // Simple deterministic pseudo-random matrix based on code hash
-  let hash = 0;
-  for (let i = 0; i < code.length; i++) {
-    hash = code.charCodeAt(i) + ((hash << 5) - hash);
-  }
+  try {
+    const qrObj = QRCode.create(code);
+    const size = qrObj.modules.size;
+    const rects: string[] = [];
+    
+    const margin = Math.max(6, Math.round(width * 0.08)); // automatic quiet zone
+    const innerWidth = width - margin * 2;
+    const innerHeight = height - margin * 2;
+    
+    const cellW = innerWidth / size;
+    const cellH = innerHeight / size;
 
-  const size = 15; // 15x15 matrix grid
-  const pad = 2; // grid cell padding
-  const rects: string[] = [];
-
-  // Corner timing synchronization anchors (standard QR markers)
-  const isPosAnchor = (r: number, c: number) => {
-    if (r < 4 && c < 4) return true; // Top Left
-    if (r < 4 && c >= size - 4) return true; // Top Right
-    if (r >= size - 4 && c < 4) return true; // Bottom Left
-    return false;
-  };
-
-  const isPosAnchorBorder = (r: number, c: number) => {
-    // Hollow inner timing pattern
-    if ((r === 1 || r === 2) && (c === 1 || c === 2)) return false;
-    if ((r === 1 || r === 2) && (c === size - 2 || c === size - 3)) return false;
-    if ((r === size - 2 || r === size - 3) && (c === 1 || c === 2)) return false;
-    return isPosAnchor(r, c);
-  };
-
-  for (let r = 0; r < size; r++) {
-    for (let c = 0; c < size; c++) {
-      let active = false;
-
-      if (isPosAnchor(r, c)) {
-        active = isPosAnchorBorder(r, c);
-      } else {
-        // Deterministic high-density noise
-        const cellHash = Math.abs(Math.sin(hash + r * 17 + c * 31));
-        active = cellHash > 0.45;
-      }
-
-      if (active) {
-        const x = (c / size) * width;
-        const y = (r / size) * height;
-        const cellW = width / size - pad;
-        const cellH = height / size - pad;
-        rects.push(`<rect x="${x}" y="${y}" width="${cellW}" height="${cellH}" fill="currentColor" rx="1" />`);
+    for (let r = 0; r < size; r++) {
+      for (let c = 0; c < size; c++) {
+        if (qrObj.modules.get(r, c)) {
+          const x = margin + c * cellW;
+          const y = margin + r * cellH;
+          // Draw rect with slight overlap to prevent hairline cracks in some SVG renderers
+          rects.push(`<rect x="${x.toFixed(2)}" y="${y.toFixed(2)}" width="${(cellW + 0.05).toFixed(2)}" height="${(cellH + 0.05).toFixed(2)}" fill="currentColor" />`);
+        }
       }
     }
-  }
 
-  return `
-    <svg width="${width}" height="${height}" viewBox="0 0 ${width} ${height}" fill="none" xmlns="http://www.w3.org/2000/svg" class="text-slate-800">
-      <rect width="${width}" height="${height}" rx="6" fill="#F8FAFC" />
-      <g transform="translate(4,4) scale(0.93)">
+    return `
+      <svg width="${width}" height="${height}" viewBox="0 0 ${width} ${height}" fill="none" xmlns="http://www.w3.org/2000/svg" class="text-slate-900 dark:text-slate-100">
+        <rect width="${width}" height="${height}" rx="6" fill="#FFFFFF" />
         ${rects.join("\n")}
-      </g>
-    </svg>
-  `;
+      </svg>
+    `;
+  } catch (err) {
+    console.error("Error generating real QR Code:", err);
+    return `
+      <svg width="${width}" height="${height}" viewBox="0 0 ${width} ${height}" fill="none" xmlns="http://www.w3.org/2000/svg" class="text-slate-400">
+        <rect width="${width}" height="${height}" rx="6" fill="#F8FAFC" />
+        <text x="50%" y="50%" dominant-baseline="middle" text-anchor="middle" font-size="10" font-family="sans-serif">QR Error</text>
+      </svg>
+    `;
+  }
 }
 
 /**

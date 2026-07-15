@@ -1209,8 +1209,7 @@ export default function SuratKeluar({
                         onClick={() => {
                           onUpdateStatus(selectedLetter.id, "Terkirim", "Sent to recipient via Resend official correspondence channel.");
                           setSelectedLetter({...selectedLetter, status: "Terkirim"});
-                          
-                          // Generate PDF base64 data for attachment
+                                            // Generate PDF base64 data for attachment
                           let pdfBase64 = "";
                           try {
                             const doc = generateLetterPDFDoc(selectedLetter);
@@ -1221,6 +1220,11 @@ export default function SuratKeluar({
                             console.error("Failed to generate PDF for attachment:", pdfErr);
                           }
 
+                          const sanitizedSubject = selectedLetter.subject
+                            ? selectedLetter.subject.trim().replace(/[/\\?%*:|"<>\s]+/g, "_")
+                            : "Surat_Keluar";
+                          const finalAttachmentName = `${sanitizedSubject}.pdf`;
+
                           // Transmit email via Resend API
                           fetch("/api/email/send", {
                             method: "POST",
@@ -1229,7 +1233,7 @@ export default function SuratKeluar({
                               to: selectedLetter.recipientEmail || companySetting.companyEmail,
                               subject: `[FGI OFFICE] - ${selectedLetter.subject}`,
                               body: selectedLetter.content,
-                              attachmentName: `Letter_${selectedLetter.verificationCode}.pdf`,
+                              attachmentName: finalAttachmentName,
                               pdfData: pdfBase64 || undefined,
                               letterData: {
                                 letterNumber: selectedLetter.letterNumber,

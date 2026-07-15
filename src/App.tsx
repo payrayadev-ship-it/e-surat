@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { 
-  Building2, LayoutDashboard, Mail, Send, MessageSquare, Archive, Settings, 
+  Building2, LayoutDashboard, Mail, Send, MessageSquare, Archive, Settings, QrCode,
   LogOut, Sun, Moon, Sparkles, User, ShieldAlert, CheckCircle, Bell, RefreshCw, Plus,
   Search, X, ExternalLink, FileDown, Calendar, Tag, Hash, Paperclip, ChevronRight, CornerDownRight, CheckCircle2, AlertTriangle
 } from "lucide-react";
@@ -24,6 +24,7 @@ import MemosMeetings from "./components/MemosMeetings";
 import ArsipDigital from "./components/ArsipDigital";
 import SettingsAudit from "./components/SettingsAudit";
 import AIKontrak from "./components/AIKontrak";
+import VerificationScanner from "./components/VerificationScanner";
 import FgiLogo from "./components/FgiLogo";
 import { DEFAULT_LOGO_BASE64 } from "./assets/logoBase64";
 
@@ -124,7 +125,13 @@ export default function App() {
     return saved ? JSON.parse(saved) : null;
   });
 
+  const [workspaceUsers, setWorkspaceUsers] = useState<UserProfile[]>(() => {
+    const saved = localStorage.getItem("workspace_users");
+    return saved ? JSON.parse(saved) : WORKSPACE_USERS;
+  });
+
   const [activeTab, setActiveTab] = useState<string>("dashboard");
+  const [initialVerifyCode, setInitialVerifyCode] = useState<string | null>(null);
 
   // Global Search states
   const [searchQuery, setSearchQuery] = useState("");
@@ -605,6 +612,22 @@ export default function App() {
     }
   }, [isDark]);
 
+  // URL Query verification parameter interceptor
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      const params = new URLSearchParams(window.location.search);
+      const verifyCode = params.get("verify");
+      if (verifyCode) {
+        setInitialVerifyCode(verifyCode);
+        setActiveTab("verification_scanner");
+        
+        // Quietly erase verification code from browser address bar
+        const newUrl = window.location.pathname;
+        window.history.replaceState({}, document.title, newUrl);
+      }
+    }
+  }, []);
+
   // Save states to localStorage upon changes
   useEffect(() => {
     localStorage.setItem("letters_in", JSON.stringify(lettersIn));
@@ -642,6 +665,10 @@ export default function App() {
     }
   }, [currentUser]);
 
+  useEffect(() => {
+    localStorage.setItem("workspace_users", JSON.stringify(workspaceUsers));
+  }, [workspaceUsers]);
+
   // Insert Audit helper
   const addAuditLog = (activity: string, actionType: AuditLog["actionType"]) => {
     const newLog: AuditLog = {
@@ -666,8 +693,8 @@ export default function App() {
   const handleCustomLogin = (e: React.FormEvent) => {
     e.preventDefault();
     // Default fallback matching if credentials entered, fallback to Super Admin
-    const preMatch = WORKSPACE_USERS.find(u => u.email === typedEmail);
-    const resolvedUser = preMatch || WORKSPACE_USERS[0];
+    const preMatch = workspaceUsers.find(u => u.email === typedEmail);
+    const resolvedUser = preMatch || workspaceUsers[0];
     setCurrentUser(resolvedUser);
     addAuditLog(`User logged in with email: ${resolvedUser.email}`, "Login");
   };
@@ -920,9 +947,20 @@ Sistem Otomatis e-Office FORSDIG`;
             companySetting={companySetting}
             auditLogs={auditLogs}
             currentRole={currentUser.role}
-            users={WORKSPACE_USERS}
+            users={workspaceUsers}
             onUpdateCompany={setCompanySetting}
             onClearAuditLogs={() => setAuditLogs([])}
+            onUpdateUsers={setWorkspaceUsers}
+          />
+        );
+      case "verification_scanner":
+        return (
+          <VerificationScanner
+            lettersOut={lettersOut}
+            lettersIn={lettersIn}
+            companySetting={companySetting}
+            onNavigate={(tab) => setActiveTab(tab)}
+            initialVerifyCode={initialVerifyCode}
           />
         );
       case "ai_kontrak":
@@ -986,7 +1024,7 @@ Sistem Otomatis e-Office FORSDIG`;
               <div className="space-y-3">
                 <span className="block text-xs font-semibold text-slate-500">Pilih Role Akses Instan (Coba Demo):</span>
                 <div className="grid grid-cols-2 sm:grid-cols-5 gap-2" id="shortcut-roles">
-                  {WORKSPACE_USERS.map((user) => (
+                  {workspaceUsers.map((user) => (
                     <button
                       key={user.id}
                       onClick={() => handleSelectMockProfile(user)}
@@ -1083,6 +1121,7 @@ Sistem Otomatis e-Office FORSDIG`;
       case "arsip": return "Cabinet Digital";
       case "settings": return "Sistem Pengaturan";
       case "ai_kontrak": return "AI Kontrak & Legal Advisor";
+      case "verification_scanner": return "Verifikator & Pemindai TTE";
       default: return "Sistem Administrasi";
     }
   };
@@ -1187,6 +1226,21 @@ Sistem Otomatis e-Office FORSDIG`;
               <Sparkles className="h-4.5 w-4.5 shrink-0 text-amber-400 animate-pulse" />
               <span className="flex-1">AI Kontrak & Legal</span>
               <span className="text-[9px] bg-indigo-600 text-white font-extrabold px-1.5 py-0.5 rounded font-sans uppercase scale-95 tracking-wide">AI</span>
+            </button>
+
+            {/* Verifikator TTE Scanner Tab */}
+            <button 
+              onClick={() => {
+                setInitialVerifyCode(null);
+                setActiveTab("verification_scanner");
+              }}
+              className={`w-full flex items-center space-x-3 px-3 py-2 rounded-lg text-xs font-semibold text-left transition-all ${
+                activeTab === "verification_scanner" ? "bg-blue-800 text-white font-bold" : "text-slate-350 hover:text-white hover:bg-blue-800/50"
+              }`}
+              id="sidebar-nav-verification"
+            >
+              <QrCode className="h-4.5 w-4.5 shrink-0" />
+              <span>Verifikator & Scan TTE</span>
             </button>
 
             {/* Settings Tab */}

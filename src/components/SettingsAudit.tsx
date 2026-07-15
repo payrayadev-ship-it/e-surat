@@ -5,6 +5,15 @@ import { collection, getDocs, addDoc, query, orderBy, limit } from "firebase/fir
 import { db, auth } from "../firebase";
 import FgiLogo from "./FgiLogo";
 
+const PRESET_AVATARS = [
+  "https://images.unsplash.com/photo-1519085360753-af0119f7cbe7?auto=format&fit=crop&q=80&w=120",
+  "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&q=80&w=120",
+  "https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?auto=format&fit=crop&q=80&w=120",
+  "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&q=80&w=120",
+  "https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&q=80&w=120",
+  "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?auto=format&fit=crop&q=80&w=120"
+];
+
 interface SettingsAuditProps {
   companySetting: CompanySetting;
   auditLogs: AuditLog[];
@@ -12,6 +21,7 @@ interface SettingsAuditProps {
   users: UserProfile[];
   onUpdateCompany: (setting: CompanySetting) => void;
   onClearAuditLogs: () => void;
+  onUpdateUsers: (users: UserProfile[]) => void;
 }
 
 export default function SettingsAudit({
@@ -20,9 +30,93 @@ export default function SettingsAudit({
   currentRole,
   users,
   onUpdateCompany,
-  onClearAuditLogs
+  onClearAuditLogs,
+  onUpdateUsers
 }: SettingsAuditProps) {
   const [activeTab, setActiveTab] = useState<"general" | "smtp" | "audit" | "users" | "ai_gemini">("general");
+
+  // Form states for manual user editing
+  const [editingUser, setEditingUser] = useState<UserProfile | null>(null);
+  const [isAddingUser, setIsAddingUser] = useState<boolean>(false);
+  const [userForm, setUserForm] = useState({
+    name: "",
+    email: "",
+    role: "Staff" as UserRole,
+    avatarUrl: ""
+  });
+
+  const handleStartEdit = (user: UserProfile) => {
+    setEditingUser(user);
+    setIsAddingUser(false);
+    setUserForm({
+      name: user.name,
+      email: user.email,
+      role: user.role,
+      avatarUrl: user.avatarUrl || ""
+    });
+  };
+
+  const handleDeleteUser = (userId: string) => {
+    if (users.length <= 1) {
+      alert("Tidak dapat menghapus semua pegawai. Harus tersisa minimal satu pegawai.");
+      return;
+    }
+    const userToDelete = users.find((u) => u.id === userId);
+    if (confirm(`Apakah Anda yakin ingin menghapus pegawai "${userToDelete?.name}"?`)) {
+      const updatedUsers = users.filter((u) => u.id !== userId);
+      onUpdateUsers(updatedUsers);
+    }
+  };
+
+  const handleSaveUser = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!userForm.name.trim() || !userForm.email.trim()) {
+      alert("Nama dan Email wajib diisi!");
+      return;
+    }
+
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(userForm.email.trim())) {
+      alert("Format email tidak valid!");
+      return;
+    }
+
+    const defaultAvatar = `https://api.dicebear.com/7.x/initials/svg?seed=${encodeURIComponent(userForm.name.trim())}`;
+
+    if (editingUser) {
+      const updatedUsers = users.map((u) =>
+        u.id === editingUser.id
+          ? {
+              ...u,
+              name: userForm.name.trim(),
+              email: userForm.email.trim(),
+              role: userForm.role,
+              avatarUrl: userForm.avatarUrl.trim() || u.avatarUrl || defaultAvatar
+            }
+          : u
+      );
+      onUpdateUsers(updatedUsers);
+      setEditingUser(null);
+    } else {
+      const newUser: UserProfile = {
+        id: `user_${Date.now()}`,
+        name: userForm.name.trim(),
+        email: userForm.email.trim(),
+        role: userForm.role,
+        avatarUrl: userForm.avatarUrl.trim() || defaultAvatar,
+        createdAt: new Date().toISOString()
+      };
+      onUpdateUsers([...users, newUser]);
+      setIsAddingUser(false);
+    }
+
+    setUserForm({
+      name: "",
+      email: "",
+      role: "Staff",
+      avatarUrl: ""
+    });
+  };
 
   // Form states - Company metadata
   const [companyName, setCompanyName] = useState(companySetting.companyName);
@@ -477,17 +571,160 @@ export default function SettingsAudit({
 
         {activeTab === "users" && (
           <div className="space-y-4" id="user-directory-panel">
-            <h3 className="text-base font-bold text-slate-805 dark:text-white border-b border-slate-100 pb-2">Direktori & Jabatan Pegawai</h3>
-            <p className="text-xs text-slate-450 dark:text-slate-500">Daftar akun berwenang dalam menyusun, memeriksa, serta menandatangani surat dinas.</p>
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between border-b border-slate-100 dark:border-slate-800 pb-2">
+              <div>
+                <h3 className="text-base font-bold text-slate-805 dark:text-white">Direktori & Jabatan Pegawai</h3>
+                <p className="text-xs text-slate-450 dark:text-slate-500 mt-0.5">Daftar akun berwenang dalam menyusun, memeriksa, serta menandatangani surat dinas.</p>
+              </div>
+              {!isAddingUser && !editingUser && (
+                <button
+                  onClick={() => {
+                    setIsAddingUser(true);
+                    setEditingUser(null);
+                    setUserForm({
+                      name: "",
+                      email: "",
+                      role: "Staff",
+                      avatarUrl: ""
+                    });
+                  }}
+                  className="mt-2 sm:mt-0 bg-blue-600 hover:bg-blue-700 text-white font-bold px-3 py-1.5 rounded-lg text-xs flex items-center gap-1.5 transition-colors self-start cursor-pointer shadow-sm"
+                >
+                  <UserCheck className="h-3.5 w-3.5" />
+                  <span>Tambah Pegawai</span>
+                </button>
+              )}
+            </div>
+
+            {(isAddingUser || editingUser) ? (
+              <form onSubmit={handleSaveUser} className="p-4 bg-slate-50 dark:bg-slate-950 rounded-xl border border-slate-150 dark:border-slate-850 space-y-4 animate-in fade-in duration-200">
+                <h4 className="text-sm font-bold text-slate-805 dark:text-white">
+                  {editingUser ? `Edit Pegawai: ${editingUser.name}` : "Tambah Pegawai Baru"}
+                </h4>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs md:text-sm">
+                  <div>
+                    <label className="block text-slate-500 font-semibold mb-1">Nama Lengkap & Gelar</label>
+                    <input
+                      type="text"
+                      required
+                      placeholder="e.g. Andi Wijaya, S.Kom."
+                      value={userForm.name}
+                      onChange={(e) => setUserForm({ ...userForm, name: e.target.value })}
+                      className="w-full p-2 border border-slate-200 dark:border-slate-800 rounded bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-100"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-slate-500 font-semibold mb-1">Surel Pegawai</label>
+                    <input
+                      type="email"
+                      required
+                      placeholder="e.g. nama@forsdig.com"
+                      value={userForm.email}
+                      onChange={(e) => setUserForm({ ...userForm, email: e.target.value })}
+                      className="w-full p-2 border border-slate-200 dark:border-slate-800 rounded bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-100"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-slate-500 font-semibold mb-1">Jabatan / Role</label>
+                    <select
+                      value={userForm.role}
+                      onChange={(e) => setUserForm({ ...userForm, role: e.target.value as UserRole })}
+                      className="w-full p-2 border border-slate-200 dark:border-slate-800 rounded bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-100"
+                    >
+                      <option value="Super Admin">Super Admin</option>
+                      <option value="Direktur">Direktur</option>
+                      <option value="Manager">Manager</option>
+                      <option value="Staff">Staff</option>
+                      <option value="Viewer">Viewer</option>
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="block text-slate-500 font-semibold mb-1">Avatar URL (Opsional)</label>
+                    <input
+                      type="text"
+                      placeholder="e.g. https://images.unsplash.com/..."
+                      value={userForm.avatarUrl}
+                      onChange={(e) => setUserForm({ ...userForm, avatarUrl: e.target.value })}
+                      className="w-full p-2 border border-slate-200 dark:border-slate-800 rounded bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-100 font-mono text-xs"
+                    />
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <span className="block text-xs font-semibold text-slate-500">Pilih Template Avatar Cepat:</span>
+                  <div className="flex flex-wrap gap-2">
+                    {PRESET_AVATARS.map((url, idx) => (
+                      <button
+                        key={idx}
+                        type="button"
+                        onClick={() => setUserForm({ ...userForm, avatarUrl: url })}
+                        className={`p-1 rounded-full border-2 transition-all cursor-pointer ${userForm.avatarUrl === url ? "border-blue-600 scale-105" : "border-transparent opacity-70 hover:opacity-100"}`}
+                      >
+                        <img src={url} alt={`Preset ${idx + 1}`} className="h-9 w-9 rounded-full object-cover" />
+                      </button>
+                    ))}
+                    <button
+                      type="button"
+                      onClick={() => setUserForm({ ...userForm, avatarUrl: "" })}
+                      className={`h-11 px-3 text-[10px] rounded-lg border border-dashed text-slate-500 hover:text-slate-700 dark:hover:text-slate-300 font-mono transition-all cursor-pointer ${!userForm.avatarUrl ? "border-blue-600 font-bold bg-blue-50 dark:bg-blue-950/20" : "border-slate-300 dark:border-slate-700"}`}
+                    >
+                      Initials (Default)
+                    </button>
+                  </div>
+                </div>
+
+                <div className="flex justify-end gap-2 pt-2 border-t border-slate-200/50 dark:border-slate-800/50 text-xs">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setIsAddingUser(false);
+                      setEditingUser(null);
+                    }}
+                    className="px-3.5 py-1.5 rounded-lg border border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-400 font-semibold hover:bg-slate-100 dark:hover:bg-slate-900 transition-colors cursor-pointer"
+                  >
+                    Batal
+                  </button>
+                  <button
+                    type="submit"
+                    className="px-4 py-1.5 rounded-lg bg-blue-600 hover:bg-blue-700 text-white font-bold transition-colors shadow-sm cursor-pointer"
+                  >
+                    Simpan
+                  </button>
+                </div>
+              </form>
+            ) : null}
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2">
               {users.map((u) => (
-                <div key={u.id} className="flex items-center space-x-3 p-3.5 bg-slate-50 dark:bg-slate-950 rounded-xl border border-slate-150 dark:border-slate-850 text-xs">
-                  <img src={u.avatarUrl} alt={u.name} className="h-10 w-10 rounded-full object-cover border border-blue-100 shrink-0" />
-                  <div>
-                    <h4 className="font-bold text-slate-805 dark:text-white">{u.name}</h4>
-                    <p className="font-medium text-slate-450 dark:text-slate-500 font-mono text-[10px] mt-0.5">{u.email}</p>
-                    <span className="inline-block mt-1 font-semibold bg-blue-50 text-blue-700 dark:bg-blue-950 dark:text-blue-300 rounded px-1.5 py-0.2 uppercase text-[9px] tracking-wide font-mono">{u.role}</span>
+                <div key={u.id} className="relative group flex items-center justify-between p-3.5 bg-slate-50 dark:bg-slate-950 rounded-xl border border-slate-150 dark:border-slate-850 text-xs transition-all hover:shadow-sm">
+                  <div className="flex items-center space-x-3">
+                    <img src={u.avatarUrl} alt={u.name} className="h-10 w-10 rounded-full object-cover border border-blue-100 shrink-0" />
+                    <div>
+                      <h4 className="font-bold text-slate-805 dark:text-white">{u.name}</h4>
+                      <p className="font-medium text-slate-450 dark:text-slate-500 font-mono text-[10px] mt-0.5">{u.email}</p>
+                      <span className="inline-block mt-1 font-semibold bg-blue-50 text-blue-700 dark:bg-blue-950 dark:text-blue-300 rounded px-1.5 py-0.2 uppercase text-[9px] tracking-wide font-mono">{u.role}</span>
+                    </div>
+                  </div>
+                  
+                  <div className="flex items-center space-x-1 sm:opacity-0 group-hover:opacity-100 transition-opacity bg-slate-50/90 dark:bg-slate-950/90 pl-2 py-1 rounded-l-lg shrink-0">
+                    <button
+                      onClick={() => handleStartEdit(u)}
+                      title="Edit Pegawai"
+                      className="p-1.5 text-slate-500 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-950/40 rounded transition-colors cursor-pointer"
+                    >
+                      <Edit3 className="h-3.5 w-3.5" />
+                    </button>
+                    <button
+                      onClick={() => handleDeleteUser(u.id)}
+                      title="Hapus Pegawai"
+                      className="p-1.5 text-slate-500 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/40 rounded transition-colors cursor-pointer"
+                    >
+                      <Trash className="h-3.5 w-3.5" />
+                    </button>
                   </div>
                 </div>
               ))}

@@ -22,6 +22,7 @@ const FOLDERS = [
 export default function ArsipDigital({ lettersIn, lettersOut, memos }: ArsipDigitalProps) {
   const [activeFolder, setActiveFolder] = useState<string>("Semua");
   const [searchQuery, setSearchQuery] = useState("");
+  const [urgencyFilter, setUrgencyFilter] = useState("Semua");
   const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");
 
@@ -47,6 +48,7 @@ export default function ArsipDigital({ lettersIn, lettersOut, memos }: ArsipDigi
       partner: string; // sender or recipient
       category: string;
       status: string;
+      urgency: "Biasa" | "Penting" | "Rahasia" | "Sangat Rahasia";
     }[] = [];
 
     // Map Inwards
@@ -59,7 +61,8 @@ export default function ArsipDigital({ lettersIn, lettersOut, memos }: ArsipDigi
         date: item.letterDate,
         partner: `${item.sender} (${item.senderInstitution})`,
         category: item.category,
-        status: item.status
+        status: item.status,
+        urgency: item.urgency || "Biasa"
       });
     });
 
@@ -73,7 +76,12 @@ export default function ArsipDigital({ lettersIn, lettersOut, memos }: ArsipDigi
         date: item.letterDate,
         partner: item.recipient,
         category: "Operasional",
-        status: item.status
+        status: item.status,
+        urgency: item.subject.toLowerCase().includes("penting") || item.content.toLowerCase().includes("penting")
+          ? "Penting"
+          : item.subject.toLowerCase().includes("rahasia") || item.content.toLowerCase().includes("rahasia")
+          ? "Rahasia"
+          : "Biasa"
       });
     });
 
@@ -87,7 +95,10 @@ export default function ArsipDigital({ lettersIn, lettersOut, memos }: ArsipDigi
         date: m.createdAt.split("T")[0],
         partner: `Kepada: ${m.recipientRole}`,
         category: "Operasional",
-        status: m.status
+        status: m.status,
+        urgency: m.subject.toLowerCase().includes("penting") || m.content.toLowerCase().includes("penting")
+          ? "Penting"
+          : "Biasa"
       });
     });
 
@@ -100,7 +111,8 @@ export default function ArsipDigital({ lettersIn, lettersOut, memos }: ArsipDigi
       date: "2026-05-10",
       partner: "PT Jaya Konstruksi",
       category: "Legal",
-      status: "Selesai"
+      status: "Selesai",
+      urgency: "Penting"
     });
     list.push({
       id: "seed-kg-1",
@@ -110,7 +122,8 @@ export default function ArsipDigital({ lettersIn, lettersOut, memos }: ArsipDigi
       date: "2026-04-18",
       partner: "Dirjen Pajak KPP Pratama",
       category: "Keuangan",
-      status: "Selesai"
+      status: "Selesai",
+      urgency: "Sangat Rahasia"
     });
 
     return list;
@@ -140,7 +153,10 @@ export default function ArsipDigital({ lettersIn, lettersOut, memos }: ArsipDigi
     const matchesStartDate = !startDate || item.date >= startDate;
     const matchesEndDate = !endDate || item.date <= endDate;
 
-    return matchesSearch && matchesFolder && matchesStartDate && matchesEndDate;
+    // Sifat/urgency matches
+    const matchesUrgency = urgencyFilter === "Semua" || item.urgency === urgencyFilter;
+
+    return matchesSearch && matchesFolder && matchesStartDate && matchesEndDate && matchesUrgency;
   });
 
   const exportArchiveExcel = () => {
@@ -150,7 +166,7 @@ export default function ArsipDigital({ lettersIn, lettersOut, memos }: ArsipDigi
   return (
     <div className="space-y-6" id="arsip-digital-viewport">
       {/* Search Header toolbar */}
-      <div className="grid grid-cols-1 lg:grid-cols-4 gap-4 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-4 rounded-xl shadow-sm">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-4 rounded-xl shadow-sm">
         {/* Search Input bar */}
         <div className="lg:col-span-2 relative">
           <span className="absolute inset-y-0 left-0 flex items-center pl-3 text-slate-400">
@@ -164,6 +180,23 @@ export default function ArsipDigital({ lettersIn, lettersOut, memos }: ArsipDigi
             className="w-full pl-9 pr-4 py-2 border border-slate-200 dark:border-slate-800 rounded-lg text-xs md:text-sm bg-slate-50 dark:bg-slate-950 text-slate-800 dark:text-slate-100"
             id="search-arsip"
           />
+        </div>
+
+        {/* Urgency Filter */}
+        <div className="flex items-center space-x-2">
+          <Filter className="h-4 w-4 text-slate-400 inline shrink-0" />
+          <select
+            value={urgencyFilter}
+            onChange={(e) => setUrgencyFilter(e.target.value)}
+            className="w-full border border-slate-200 dark:border-slate-800 rounded p-1.5 text-xs bg-slate-50 dark:bg-slate-950 text-slate-800 dark:text-slate-100 font-medium"
+            id="filter-sifat-arsip"
+          >
+            <option value="Semua">Semua Sifat Surat</option>
+            <option value="Biasa">Biasa</option>
+            <option value="Penting">Penting</option>
+            <option value="Rahasia">Rahasia</option>
+            <option value="Sangat Rahasia">Sangat Rahasia</option>
+          </select>
         </div>
 
         {/* Start Date filter */}
@@ -236,7 +269,7 @@ export default function ArsipDigital({ lettersIn, lettersOut, memos }: ArsipDigi
         <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl shadow-sm lg:col-span-3 flex flex-col overflow-hidden">
           <div className="p-4 border-b border-slate-150 dark:border-slate-800/85 flex justify-between items-center bg-slate-50/50 dark:bg-transparent">
             <div>
-              <span className="text-sm font-bold text-slate-805 dark:text-white block">Berkas Terarsip ({filteredItems.length} dokumen)</span>
+              <span className="text-sm font-bold text-slate-850 dark:text-white block">Berkas Terarsip ({filteredItems.length} dokumen)</span>
               <p className="text-[11px] text-slate-450 dark:text-slate-500 mt-0.5">Sistem index terpusat PT. Foresyndo Global Indonesia</p>
             </div>
 
@@ -255,6 +288,7 @@ export default function ArsipDigital({ lettersIn, lettersOut, memos }: ArsipDigi
               <thead>
                 <tr className="border-b border-slate-200 dark:border-slate-800 text-slate-400 uppercase tracking-wider font-mono text-[10px]">
                   <th className="p-4 font-semibold">Tipe Berkas</th>
+                  <th className="p-4 font-semibold">Sifat</th>
                   <th className="p-4 font-semibold">Nomor Berkas / Agenda</th>
                   <th className="p-4 font-semibold">Judul / Perihal</th>
                   <th className="p-4 font-semibold">Mitra / Pengirim</th>
@@ -280,6 +314,17 @@ export default function ArsipDigital({ lettersIn, lettersOut, memos }: ArsipDigi
                         {item.type}
                       </span>
                     </td>
+                    <td className="p-4">
+                      <span className={`inline-block px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-tight ${
+                        item.urgency === "Penting" 
+                          ? "bg-amber-50 text-amber-700 dark:bg-amber-950/40 dark:text-amber-400 border border-amber-200/50" 
+                          : item.urgency === "Rahasia" || item.urgency === "Sangat Rahasia"
+                          ? "bg-rose-50 text-rose-700 dark:bg-rose-950/40 dark:text-rose-450 border border-rose-200/50"
+                          : "bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-350 border border-slate-200/40"
+                      }`}>
+                        {item.urgency}
+                      </span>
+                    </td>
                     <td className="p-4 font-mono font-semibold text-slate-800 dark:text-slate-200 text-[10.5px]">
                       {item.number}
                     </td>
@@ -303,7 +348,7 @@ export default function ArsipDigital({ lettersIn, lettersOut, memos }: ArsipDigi
 
                 {filteredItems.length === 0 && (
                   <tr>
-                    <td colSpan={6} className="text-center py-16 text-slate-450 dark:text-slate-500 italic bg-slate-50/30">
+                    <td colSpan={7} className="text-center py-16 text-slate-450 dark:text-slate-500 italic bg-slate-50/30">
                       Kabinet digital kosong. Tidak ditemukan berkas terindeks untuk kategori ini.
                     </td>
                   </tr>

@@ -330,7 +330,7 @@ Respons Anda harus berupa valid JSON objek dengan struktur exact sebagai berikut
 Harap pastikan output Anda mematuhi skema JSON di atas dengan sempurna. Jangan menyisipkan teks pengantar atau teks penutup di luar objek JSON tersebut.`;
 
     const response = await ai.models.generateContent({
-      model: "gemini-2.5-flash-lite",
+      model: "gemini-3.6-flash",
       contents: promptText,
       config: {
         responseMimeType: "application/json",

@@ -104,7 +104,7 @@ Respons Anda harus dalam format JSON dengan kunci exact:
 }`;
 
       const response = await ai.models.generateContent({
-        model: "gemini-2.5-flash-lite",
+        model: "gemini-3.6-flash",
         contents: promptText,
         config: {
           responseMimeType: "application/json",
@@ -138,7 +138,7 @@ Respons Anda harus dalam format JSON dengan kunci exact:
 
     } else {
       const response = await ai.models.generateContent({
-        model: "gemini-2.5-flash-lite",
+        model: "gemini-3.6-flash",
         contents: prompt
       });
 

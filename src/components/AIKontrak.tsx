@@ -216,12 +216,6 @@ export default function AIKontrak({ currentRole, currentUser }: AIKontrakProps) 
       doc.setLineWidth(0.35);
       doc.rect(12, 12, pageWidth - 24, pageHeight - 24);
 
-      // Header watermark style info
-      doc.setFont("helvetica", "normal");
-      doc.setFontSize(7.5);
-      doc.setTextColor(148, 163, 184); // slate-400
-      doc.text("FORSDIG AI LEGAL ADVOCACY PLATFORM - DRAFT DOKUMEN RESMI", leftMargin, 16);
-
       // Footer with page numbering
       doc.setFont("helvetica", "normal");
       doc.setFontSize(8);

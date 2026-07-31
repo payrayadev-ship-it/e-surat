@@ -1,10 +1,11 @@
 import React, { useState } from "react";
-import { Plus, Search, FileText, Share2, CornerDownRight, Check, AlertTriangle, ArrowUpRight, UploadCloud, X, User, Sparkles, RefreshCw } from "lucide-react";
+import { Plus, Search, FileText, Share2, CornerDownRight, Check, AlertTriangle, ArrowUpRight, UploadCloud, X, User, Sparkles, RefreshCw, Link, QrCode } from "lucide-react";
 import { LetterIn, UserRole, Disposition, UserProfile } from "../types";
 import { collection, addDoc } from "firebase/firestore";
 import { db, auth } from "../firebase";
 import { jsPDF } from "jspdf";
 import { DEFAULT_LOGO_BASE64 } from "../assets/logoBase64";
+import { downloadVerificationQRPNG } from "../utils";
 
 interface SuratMasukProps {
   letters: LetterIn[];
@@ -27,6 +28,24 @@ export default function SuratMasuk({
   const [categoryFilter, setCategoryFilter] = useState("Semua");
   const [urgencyFilter, setUrgencyFilter] = useState("Semua");
   const [selectedLetter, setSelectedLetter] = useState<LetterIn | null>(null);
+  const [copiedLinkId, setCopiedLinkId] = useState<string | null>(null);
+
+  const handleCopyLink = (letterId: string) => {
+    const baseUrl = window.location.origin + window.location.pathname;
+    const shareUrl = `${baseUrl}?letterId=${encodeURIComponent(letterId)}&type=in`;
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(shareUrl);
+    } else {
+      const ta = document.createElement("textarea");
+      ta.value = shareUrl;
+      document.body.appendChild(ta);
+      ta.select();
+      document.execCommand("copy");
+      document.body.removeChild(ta);
+    }
+    setCopiedLinkId(letterId);
+    setTimeout(() => setCopiedLinkId(null), 2500);
+  };
 
   // Form states - Add Letter
   const [isAddOpen, setIsAddOpen] = useState(false);
@@ -715,8 +734,28 @@ export default function SuratMasuk({
           {selectedLetter ? (
             <div className="space-y-4" id="selected-letter-detail">
               <div className="flex justify-between items-center border-b border-slate-100 dark:border-slate-800 pb-3">
-                <div className="flex items-center space-x-2">
-                  <h3 className="font-bold text-slate-800 dark:text-white text-sm">Pratinjau Agenda Detail</h3>
+                <div className="flex items-center space-x-1.5 flex-wrap gap-y-1">
+                  <h3 className="font-bold text-slate-800 dark:text-white text-sm mr-1">Pratinjau Agenda Detail</h3>
+                  <button
+                    onClick={() => handleCopyLink(selectedLetter.id)}
+                    className={`flex items-center space-x-1 font-bold py-1 px-2.5 rounded text-[10px] transition-all cursor-pointer shadow-xs border ${
+                      copiedLinkId === selectedLetter.id
+                        ? "bg-emerald-600 text-white border-emerald-600"
+                        : "bg-indigo-50 hover:bg-indigo-100 dark:bg-indigo-950/50 dark:hover:bg-indigo-900/80 text-indigo-700 dark:text-indigo-300 border-indigo-200 dark:border-indigo-800"
+                    }`}
+                    title="Salin tautan surat ini untuk kolaborasi antar-departemen"
+                  >
+                    {copiedLinkId === selectedLetter.id ? <Check className="h-3 w-3" /> : <Link className="h-3 w-3" />}
+                    <span>{copiedLinkId === selectedLetter.id ? "Tersalin!" : "Salin Tautan"}</span>
+                  </button>
+                  <button 
+                    onClick={() => downloadVerificationQRPNG(selectedLetter, "in")}
+                    className="flex items-center space-x-1 bg-emerald-50 hover:bg-emerald-100 dark:bg-emerald-950/45 dark:hover:bg-emerald-950/90 border border-emerald-200 dark:border-emerald-900 text-emerald-700 dark:text-emerald-400 font-bold py-1 px-2.5 rounded text-[10px] transition-all cursor-pointer shadow-xs"
+                    title="Unduh stiker QR Code verifikasi secara terpisah untuk ditempelkan pada berkas cetak fisik"
+                  >
+                    <QrCode className="h-3 w-3" />
+                    <span>Unduh QR</span>
+                  </button>
                   <button 
                     onClick={() => handleExportPDF(selectedLetter)}
                     className="flex items-center space-x-1 bg-blue-50 hover:bg-blue-100 dark:bg-blue-950/45 dark:hover:bg-blue-950/90 border border-blue-200 dark:border-blue-900 text-blue-600 dark:text-blue-400 font-bold py-1 px-2.5 rounded text-[10px] transition-all cursor-pointer shadow-xs"

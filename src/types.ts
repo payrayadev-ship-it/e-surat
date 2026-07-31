@@ -99,7 +99,7 @@ export interface AuditLog {
   userId: string;
   userEmail: string;
   activity: string;
-  actionType: "Login" | "Logout" | "Tambah Surat" | "Edit Surat" | "Hapus Surat" | "Approval" | "Cetak Surat" | "Simpan Surat";
+  actionType: "Login" | "Logout" | "Tambah Surat" | "Edit Surat" | "Hapus Surat" | "Approval" | "Cetak Surat" | "Simpan Surat" | "Salin Tautan";
   ipAddress: string;
   timestamp: string;
 }

@@ -99,7 +99,7 @@ Instruksi User: ${prompt}`;
       try {
         console.log("[GEMINI] Initiating prompt execution with structured responseSchema...");
         response = await ai.models.generateContent({
-          model: "gemini-3.5-flash",
+          model: "gemini-3.6-flash",
           contents: promptText,
           config: {
             responseMimeType: "application/json",
@@ -135,7 +135,7 @@ Instruksi User: ${prompt}`;
         console.log("[GEMINI] Primary processor busy or failed, activating secondary query with structured schema...");
         try {
           response = await ai.models.generateContent({
-            model: "gemini-3.1-flash-lite",
+            model: "gemini-3.6-flash",
             contents: promptText,
             config: {
               responseMimeType: "application/json",
@@ -496,7 +496,7 @@ Respons Anda harus berupa valid JSON objek dengan struktur exact sebagai berikut
 Harap pastikan output Anda mematuhi skema JSON di atas dengan sempurna. Jangan menyisipkan teks pengantar atau teks penutup di luar objek JSON tersebut.`;
 
       const response = await ai.models.generateContent({
-        model: "gemini-3.5-flash",
+        model: "gemini-3.6-flash",
         contents: promptText,
         config: {
           responseMimeType: "application/json",

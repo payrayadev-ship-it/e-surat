@@ -217,7 +217,7 @@ export default function SettingsAudit({
       setTestResult({
         success: true,
         title: "Koneksi Berhasil!",
-        message: `Status: CONNECTED\nModel: gemini-3.5-flash\nKunci API Riil: ${useRealKey ? "AKTIF" : "OFFLINE FALLBACK"}\nRespon AI: "${resText}"`
+        message: `Status: CONNECTED\nModel: gemini-3.6-flash\nKunci API Riil: ${useRealKey ? "AKTIF" : "OFFLINE FALLBACK"}\nRespon AI: "${resText}"`
       });
       
       const newLogPayload = {
@@ -832,9 +832,9 @@ export default function SettingsAudit({
               <div className="bg-slate-50 dark:bg-slate-950 p-4 rounded-xl border border-slate-150 dark:border-slate-850">
                 <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider font-mono">Model Aktif Utama</span>
                 <div className="mt-2">
-                  <span className="text-sm font-bold text-indigo-600 dark:text-indigo-400 font-mono">gemini-3.5-flash</span>
+                  <span className="text-sm font-bold text-indigo-600 dark:text-indigo-400 font-mono">gemini-3.6-flash</span>
                 </div>
-                <span className="text-[10px] text-slate-400 block mt-1">Basic Text & Structured Content</span>
+                <span className="text-[10px] text-slate-400 block mt-1">Basic Text &amp; Structured Content</span>
               </div>
             </div>
 

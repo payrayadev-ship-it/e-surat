@@ -1,7 +1,7 @@
 import React, { useState, useRef, useEffect } from "react";
-import { Plus, Search, FileText, Bot, Send, Check, ShieldCheck, Signature, Sparkles, Printer, UserCheck, Eye, RefreshCw, X, Edit3, QrCode, Award, ShieldAlert, CheckCircle2, Download, LayoutTemplate } from "lucide-react";
+import { Plus, Search, FileText, Bot, Send, Check, ShieldCheck, Signature, Sparkles, Printer, UserCheck, Eye, RefreshCw, X, Edit3, QrCode, Award, ShieldAlert, CheckCircle2, Download, LayoutTemplate, Link } from "lucide-react";
 import { LetterOut, UserRole, UserProfile, CompanySetting } from "../types";
-import { generateLetterNumber, injectTemplateVariables, generateVerificationQR } from "../utils";
+import { generateLetterNumber, injectTemplateVariables, generateVerificationQR, downloadVerificationQRPNG } from "../utils";
 import { jsPDF } from "jspdf";
 import RichTextEditor from "./RichTextEditor";
 import FgiLogo from "./FgiLogo";
@@ -202,6 +202,24 @@ export default function SuratKeluar({
   const [isPrintPreviewModalOpen, setIsPrintPreviewModalOpen] = useState(false);
   const [pdfDataUri, setPdfDataUri] = useState<string>("");
   const [previewTab, setPreviewTab] = useState<"visual" | "pdf">("visual");
+  const [copiedLinkKeluarId, setCopiedLinkKeluarId] = useState<string | null>(null);
+
+  const handleCopyLinkKeluar = (letterId: string) => {
+    const baseUrl = window.location.origin + window.location.pathname;
+    const shareUrl = `${baseUrl}?letterId=${encodeURIComponent(letterId)}&type=out`;
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(shareUrl);
+    } else {
+      const ta = document.createElement("textarea");
+      ta.value = shareUrl;
+      document.body.appendChild(ta);
+      ta.select();
+      document.execCommand("copy");
+      document.body.removeChild(ta);
+    }
+    setCopiedLinkKeluarId(letterId);
+    setTimeout(() => setCopiedLinkKeluarId(null), 2500);
+  };
 
   useEffect(() => {
     if (isPrintPreviewModalOpen && selectedLetter) {
@@ -2318,7 +2336,30 @@ export default function SuratKeluar({
               </div>
 
               {/* Instant Actions */}
-              <div className="flex items-center space-x-2 w-full sm:w-auto justify-end">
+              <div className="flex items-center space-x-2 w-full sm:w-auto justify-end flex-wrap gap-y-2">
+                <button
+                  onClick={() => handleCopyLinkKeluar(selectedLetter.id)}
+                  className={`flex-1 sm:flex-none flex items-center justify-center space-x-1.5 font-bold py-1.5 px-3.5 rounded-lg text-xs transition-all cursor-pointer border ${
+                    copiedLinkKeluarId === selectedLetter.id
+                      ? "bg-emerald-600 text-white border-emerald-600"
+                      : "bg-indigo-50 hover:bg-indigo-100 dark:bg-indigo-950/60 dark:hover:bg-indigo-900/80 text-indigo-700 dark:text-indigo-300 border-indigo-200 dark:border-indigo-800"
+                  }`}
+                  title="Salin tautan surat keluar ini untuk kolaborasi antar-departemen"
+                >
+                  {copiedLinkKeluarId === selectedLetter.id ? <Check className="h-3.5 w-3.5" /> : <Link className="h-3.5 w-3.5" />}
+                  <span>{copiedLinkKeluarId === selectedLetter.id ? "Tersalin!" : "Salin Tautan"}</span>
+                </button>
+
+                <button
+                  onClick={() => downloadVerificationQRPNG(selectedLetter, "out")}
+                  className="flex-1 sm:flex-none flex items-center justify-center space-x-1.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-1.5 px-3.5 rounded-lg text-xs transition-all cursor-pointer shadow-sm"
+                  title="Unduh stiker QR Code verifikasi secara terpisah untuk ditempelkan pada fisik dokumen cetak"
+                  id="btn-unduh-qr-keluar"
+                >
+                  <QrCode className="h-3.5 w-3.5" />
+                  <span>Unduh Stiker QR</span>
+                </button>
+
                 <button
                   onClick={() => {
                     const doc = generateLetterPDFDoc(selectedLetter);

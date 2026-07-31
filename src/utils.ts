@@ -48,6 +48,100 @@ export function generateVerificationQR(code: string, width = 120, height = 120):
 }
 
 /**
+ * Generates a high-resolution printable PNG badge for physical document verification.
+ */
+export async function downloadVerificationQRPNG(
+  letter: { verificationCode?: string; letterNumber: string; id: string; subject?: string },
+  type: "in" | "out"
+) {
+  const code = letter.verificationCode || letter.letterNumber || letter.id;
+  const baseUrl = window.location.origin + window.location.pathname;
+  const verifyUrl = `${baseUrl}?letterId=${encodeURIComponent(letter.id)}&type=${type}`;
+
+  const qrDataUrl = await QRCode.toDataURL(verifyUrl, {
+    width: 480,
+    margin: 2,
+    color: {
+      dark: "#0f172a",
+      light: "#ffffff"
+    }
+  });
+
+  const canvas = document.createElement("canvas");
+  const ctx = canvas.getContext("2d");
+  if (!ctx) return;
+
+  canvas.width = 600;
+  canvas.height = 760;
+
+  // Background card
+  ctx.fillStyle = "#ffffff";
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+  // Outer border
+  ctx.strokeStyle = "#cbd5e1";
+  ctx.lineWidth = 4;
+  ctx.strokeRect(16, 16, canvas.width - 32, canvas.height - 32);
+
+  // Header Box
+  ctx.fillStyle = "#1e293b";
+  ctx.fillRect(20, 20, canvas.width - 40, 90);
+
+  ctx.fillStyle = "#ffffff";
+  ctx.font = "bold 22px sans-serif";
+  ctx.textAlign = "center";
+  ctx.fillText("STIKER VERIFIKASI DOKUMEN FISIK", canvas.width / 2, 58);
+
+  ctx.fillStyle = "#94a3b8";
+  ctx.font = "14px sans-serif";
+  ctx.fillText("FORSDIG DIGITAL SIGNATURE & E-OFFICE HUB", canvas.width / 2, 85);
+
+  // Draw QR Image
+  const img = new Image();
+  img.crossOrigin = "anonymous";
+  img.src = qrDataUrl;
+
+  await new Promise((resolve) => {
+    img.onload = resolve;
+  });
+
+  const qrSize = 400;
+  ctx.drawImage(img, (canvas.width - qrSize) / 2, 135, qrSize, qrSize);
+
+  // Text details below QR
+  ctx.fillStyle = "#0f172a";
+  ctx.font = "bold 18px monospace";
+  ctx.fillText(`KODE: ${code}`, canvas.width / 2, 575);
+
+  ctx.fillStyle = "#334155";
+  ctx.font = "14px sans-serif";
+  const numText = `No. Surat: ${letter.letterNumber}`;
+  ctx.fillText(numText.length > 45 ? numText.substring(0, 42) + "..." : numText, canvas.width / 2, 610);
+
+  ctx.fillStyle = "#64748b";
+  ctx.font = "12px sans-serif";
+  ctx.fillText("Pindai QR ini untuk verifikasi keabsahan dokumen fisik", canvas.width / 2, 645);
+
+  // Footer stamp line
+  ctx.fillStyle = "#f1f5f9";
+  ctx.fillRect(20, 675, canvas.width - 40, 60);
+
+  ctx.fillStyle = "#475569";
+  ctx.font = "bold 12px sans-serif";
+  ctx.fillText("Diterbitkan Oleh Sistem e-Office FORSDIG", canvas.width / 2, 710);
+
+  // Trigger download
+  const downloadUrl = canvas.toDataURL("image/png");
+  const link = document.createElement("a");
+  const cleanNum = letter.letterNumber.replace(/[/\\?%*:|"<>]/g, "_");
+  link.download = `QR_Verifikasi_${cleanNum}.png`;
+  link.href = downloadUrl;
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+}
+
+/**
  * Automates corporate registration numbers.
  * Format e.g., SPD/2026/06/0001
  */

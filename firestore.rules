@@ -2,69 +2,54 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    // Global default catch-all: DENY ALL
+    // Global default catch-all: ALLOW ALL for simplified device sync without Firebase Auth
     match /{document=**} {
-      allow read, write: if false;
-    }
-
-    // Helper functions
-    function isSignedIn() {
-      return request.auth != null;
-    }
-
-    function isOwner(userId) {
-      return isSignedIn() && request.auth.uid == userId;
+      allow read, write: if true;
     }
 
     // --- Users ---
     match /users/{userId} {
-      allow read: if isSignedIn();
-      allow write: if isOwner(userId);
+      allow read, write: if true;
     }
 
     // --- Letters In ---
     match /letters_in/{letterId} {
-      allow read, write: if isSignedIn();
+      allow read, write: if true;
     }
 
     // --- Letters Out ---
     match /letters_out/{letterId} {
-      allow read, write: if isSignedIn();
+      allow read, write: if true;
     }
 
     // --- Dispositions ---
     match /dispositions/{dispId} {
-      allow read, write: if isSignedIn();
+      allow read, write: if true;
     }
 
     // --- Memos ---
     match /memos/{memoId} {
-      allow read, write: if isSignedIn();
+      allow read, write: if true;
     }
 
     // --- Meetings ---
     match /meetings/{meetId} {
-      allow read, write: if isSignedIn();
+      allow read, write: if true;
     }
 
     // --- Audit Logs ---
     match /audit_logs/{logId} {
-      allow read: if isSignedIn();
-      allow create: if isSignedIn();
-      allow update, delete: if false; // Audit logs should be immutable
+      allow read, write: if true;
     }
 
     // --- Settings ---
     match /settings/{setId} {
-      allow read: if isSignedIn();
-      allow write: if isSignedIn();
+      allow read, write: if true;
     }
 
     // --- AI Logs ---
     match /ai_logs/{logId} {
-      allow read: if isSignedIn();
-      allow create: if isSignedIn();
-      allow update, delete: if false; // Logs are immutable
+      allow read, write: if true;
     }
   }
 }

@@ -4,6 +4,7 @@ import { LetterIn, UserRole, Disposition, UserProfile } from "../types";
 import { collection, addDoc } from "firebase/firestore";
 import { db, auth } from "../firebase";
 import { jsPDF } from "jspdf";
+import { DEFAULT_LOGO_BASE64 } from "../assets/logoBase64";
 
 interface SuratMasukProps {
   letters: LetterIn[];
@@ -101,42 +102,54 @@ export default function SuratMasuk({
 
     // Helper to draw clean header on a page
     const drawLetterhead = (pageNumber: number) => {
-      // --- 1. Draw Corporate Letter Head Logo (Rounded Rect with Gold contrast) ---
-      doc.setFillColor(30, 41, 142); // Navy Blue
-      doc.roundedRect(20, 15, 14, 14, 2, 2, "F");
-      
-      doc.setFillColor(234, 179, 8); // Golden Accent Accent Dot
-      doc.circle(23, 26, 1.5, "F");
-
-      // Logo text white bold
-      doc.setTextColor(255, 255, 255);
-      doc.setFont("helvetica", "bold");
-      doc.setFontSize(10);
-      doc.text("FGI", 26, 23.5, { align: "center" });
+      // --- 1. Draw Corporate Letter Head Logo ---
+      if (DEFAULT_LOGO_BASE64 && DEFAULT_LOGO_BASE64.startsWith("data:image/")) {
+        try {
+          const format = DEFAULT_LOGO_BASE64.includes("png") ? "PNG" : "JPEG";
+          doc.addImage(DEFAULT_LOGO_BASE64, format, 20, 14, 38, 14, undefined, "FAST");
+        } catch (logoErr) {
+          console.error("Failed to add company logo to PDF in SuratMasuk:", logoErr);
+          doc.setFillColor(30, 41, 142);
+          doc.roundedRect(20, 15, 14, 14, 2, 2, "F");
+          doc.setTextColor(255, 255, 255);
+          doc.setFont("helvetica", "bold");
+          doc.setFontSize(10);
+          doc.text("FGI", 26, 23.5, { align: "center" });
+        }
+      } else {
+        doc.setFillColor(30, 41, 142);
+        doc.roundedRect(20, 15, 14, 14, 2, 2, "F");
+        doc.setTextColor(255, 255, 255);
+        doc.setFont("helvetica", "bold");
+        doc.setFontSize(10);
+        doc.text("FGI", 26, 23.5, { align: "center" });
+      }
 
       // --- 2. Company Name and Details (KOP SURAT) ---
+      const textStartX = 62;
       doc.setTextColor(15, 23, 42); // Navy / Dark slate
       doc.setFont("helvetica", "bold");
       doc.setFontSize(14);
-      doc.text(companyName.toUpperCase(), 38, 19.5);
+      doc.text(companyName.toUpperCase(), textStartX, 19.5);
 
       doc.setTextColor(71, 85, 105); // Slate Dark Grey
       doc.setFont("helvetica", "normal");
       doc.setFontSize(8.5);
       
-      const addressLines = doc.splitTextToSize(companyAddress, 150);
-      doc.text(addressLines, 38, 24);
+      const addressLines = doc.splitTextToSize(companyAddress, 128);
+      doc.text(addressLines, textStartX, 24);
       
       // Telephone & email details line
       const detailsLineY = 24 + (addressLines.length * 3.8);
       
       doc.setFont("helvetica", "bold");
       doc.setTextColor(30, 41, 142);
-      doc.text("e-Office & Digital Signature Hub", 38, detailsLineY);
+      doc.text("e-Office & Digital Signature Hub", textStartX, detailsLineY);
       
       doc.setFont("helvetica", "normal");
       doc.setTextColor(100, 116, 139);
-      doc.text(` |  Telp: ${companyPhone}  |  Email: ${companyEmail}`, 85, detailsLineY);
+      const hubTextWidth = doc.getTextWidth("e-Office & Digital Signature Hub");
+      doc.text(` | Telp: ${companyPhone} | Email: ${companyEmail}`, textStartX + hubTextWidth, detailsLineY);
 
       // --- 3. Premium Double Divider borders ---
       const lineY = detailsLineY + 3.5;

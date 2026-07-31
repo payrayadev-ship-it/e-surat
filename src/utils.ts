@@ -1,5 +1,6 @@
 import QRCode from "qrcode";
 import { LetterIn, LetterOut, Memo, Meeting, CompanySetting, AuditLog, Disposition } from "./types";
+import { DEFAULT_LOGO_BASE64 } from "./assets/logoBase64";
 
 /**
  * Real Vector QR Code generator using standard qrcode package.
@@ -138,6 +139,7 @@ export const seedCompanySetting: CompanySetting = {
   companyEmail: "office@forsdig-teknologi.com",
   companyPhone: "+62 21-5099-8800",
   letterNumberFormat: "FORSDIG/YYYY/MM/[SEQ]",
+  companyLogo: DEFAULT_LOGO_BASE64,
   smtpHost: "smtp.forsdig-teknologi.com",
   smtpPort: 587,
   smtpUser: "notifications@forsdig-teknologi.com"

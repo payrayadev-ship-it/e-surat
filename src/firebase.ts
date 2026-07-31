@@ -1,23 +1,36 @@
-import { initializeApp } from 'firebase/app';
-import { getAuth } from 'firebase/auth';
-import { getFirestore } from 'firebase/firestore';
-import firebaseConfig from '../firebase-applet-config.json';
+import { initializeApp } from "firebase/app";
+import { getAuth } from "firebase/auth";
+import { getFirestore, doc, getDocFromServer } from "firebase/firestore";
+import firebaseConfig from "../firebase-applet-config.json";
 
-// Initialize core Firebase App
 const app = initializeApp(firebaseConfig);
+export const db = getFirestore(app, firebaseConfig.firestoreDatabaseId); /* CRITICAL: The app will break without this line */
+export const auth = getAuth();
 
-// Initialize database with potential multi-database ID
-export const db = getFirestore(app, firebaseConfig.firestoreDatabaseId || "(default)");
-export const auth = getAuth(app);
+// Validate Connection to Firestore on startup
+export async function testConnection() {
+  try {
+    await getDocFromServer(doc(db, "test", "connection"));
+    console.log("Successfully connected to Firestore database.");
+  } catch (error) {
+    if (error instanceof Error && error.message.includes("the client is offline")) {
+      console.error("Please check your Firebase configuration. Client is offline.");
+    } else {
+      console.warn("Firestore validation completed (non-blocking).");
+    }
+  }
+}
 
-// Strict operation enumerations conforming to guidelines
+testConnection();
+
+// Mandatory OperationType enum and FirestoreErrorInfo interface for robust debugging
 export enum OperationType {
-  CREATE = 'create',
-  UPDATE = 'update',
-  DELETE = 'delete',
-  LIST = 'list',
-  GET = 'get',
-  WRITE = 'write',
+  CREATE = "create",
+  UPDATE = "update",
+  DELETE = "delete",
+  LIST = "list",
+  GET = "get",
+  WRITE = "write",
 }
 
 export interface FirestoreErrorInfo {
@@ -34,17 +47,14 @@ export interface FirestoreErrorInfo {
       providerId?: string | null;
       email?: string | null;
     }[];
-  }
+  };
 }
 
-/**
- * Custom error handler to log structural details when firestore rules deny operations
- */
-export function handleFirestoreError(error: unknown, operationType: OperationType, path: string | null): never {
+export function handleFirestoreError(error: unknown, operationType: OperationType, path: string | null) {
   const errInfo: FirestoreErrorInfo = {
     error: error instanceof Error ? error.message : String(error),
     authInfo: {
-      userId: auth.currentUser?.uid || "anonymous_or_local_simulation",
+      userId: auth.currentUser?.uid || null,
       email: auth.currentUser?.email || null,
       emailVerified: auth.currentUser?.emailVerified || null,
       isAnonymous: auth.currentUser?.isAnonymous || null,
@@ -57,7 +67,6 @@ export function handleFirestoreError(error: unknown, operationType: OperationTyp
     operationType,
     path
   };
-  
-  console.error("Firestore Permission/Access Error Exception Locked:", JSON.stringify(errInfo));
+  console.error("Firestore Error: ", JSON.stringify(errInfo));
   throw new Error(JSON.stringify(errInfo));
 }

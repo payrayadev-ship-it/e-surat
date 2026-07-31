@@ -27,6 +27,10 @@ import AIKontrak from "./components/AIKontrak";
 import VerificationScanner from "./components/VerificationScanner";
 import FgiLogo from "./components/FgiLogo";
 import { DEFAULT_LOGO_BASE64 } from "./assets/logoBase64";
+import { 
+  collection, doc, setDoc, getDocs, onSnapshot, updateDoc, deleteDoc 
+} from "firebase/firestore";
+import { db, handleFirestoreError, OperationType } from "./firebase";
 
 // Mock Active profiles for quick demo selection
 const WORKSPACE_USERS: UserProfile[] = [
@@ -74,6 +78,7 @@ const DEFAULT_SETTING: CompanySetting = {
   companyPhone: "+62 21-5088-2940",
   companyEmail: "sekretariat@forsdig.com",
   letterNumberFormat: "SPD/2026/06/[SEQ]",
+  companyLogo: DEFAULT_LOGO_BASE64,
   smtpHost: "smtp.forsdig-office.co.id",
   smtpPort: 587,
   smtpUser: "notifications@forsdig.com"
@@ -84,51 +89,19 @@ export default function App() {
     return localStorage.getItem("theme") === "dark";
   });
 
-  // State arrays persisted in localStorage
-  const [lettersIn, setLettersIn] = useState<LetterIn[]>(() => {
-    const saved = localStorage.getItem("letters_in");
-    return saved ? JSON.parse(saved) : seedLettersIn;
-  });
-
-  const [lettersOut, setLettersOut] = useState<LetterOut[]>(() => {
-    const saved = localStorage.getItem("letters_out");
-    return saved ? JSON.parse(saved) : seedLettersOut;
-  });
-
-  const [dispositions, setDispositions] = useState<Disposition[]>(() => {
-    const saved = localStorage.getItem("dispositions");
-    return saved ? JSON.parse(saved) : seedDispositions;
-  });
-
-  const [memos, setMemos] = useState<Memo[]>(() => {
-    const saved = localStorage.getItem("memos");
-    return saved ? JSON.parse(saved) : seedMemos;
-  });
-
-  const [meetings, setMeetings] = useState<Meeting[]>(() => {
-    const saved = localStorage.getItem("meetings");
-    return saved ? JSON.parse(saved) : seedMeetings;
-  });
-
-  const [auditLogs, setAuditLogs] = useState<AuditLog[]>(() => {
-    const saved = localStorage.getItem("audit_logs");
-    return saved ? JSON.parse(saved) : seedAuditLogs;
-  });
-
-  const [companySetting, setCompanySetting] = useState<CompanySetting>(() => {
-    const saved = localStorage.getItem("company_setting");
-    return saved ? JSON.parse(saved) : DEFAULT_SETTING;
-  });
-
+  // State arrays persisted in Firestore (with seed data as immediate fallback during load)
+  const [lettersIn, setLettersIn] = useState<LetterIn[]>(seedLettersIn);
+  const [lettersOut, setLettersOut] = useState<LetterOut[]>(seedLettersOut);
+  const [dispositions, setDispositions] = useState<Disposition[]>(seedDispositions);
+  const [memos, setMemos] = useState<Memo[]>(seedMemos);
+  const [meetings, setMeetings] = useState<Meeting[]>(seedMeetings);
+  const [auditLogs, setAuditLogs] = useState<AuditLog[]>(seedAuditLogs);
+  const [companySetting, setCompanySetting] = useState<CompanySetting>(DEFAULT_SETTING);
   const [currentUser, setCurrentUser] = useState<UserProfile | null>(() => {
     const saved = localStorage.getItem("current_user");
     return saved ? JSON.parse(saved) : null;
   });
-
-  const [workspaceUsers, setWorkspaceUsers] = useState<UserProfile[]>(() => {
-    const saved = localStorage.getItem("workspace_users");
-    return saved ? JSON.parse(saved) : WORKSPACE_USERS;
-  });
+  const [workspaceUsers, setWorkspaceUsers] = useState<UserProfile[]>(WORKSPACE_USERS);
 
   const [activeTab, setActiveTab] = useState<string>("dashboard");
   const [isSidebarOpen, setIsSidebarOpen] = useState<boolean>(false);
@@ -630,35 +603,7 @@ export default function App() {
     }
   }, []);
 
-  // Save states to localStorage upon changes
-  useEffect(() => {
-    localStorage.setItem("letters_in", JSON.stringify(lettersIn));
-  }, [lettersIn]);
-
-  useEffect(() => {
-    localStorage.setItem("letters_out", JSON.stringify(lettersOut));
-  }, [lettersOut]);
-
-  useEffect(() => {
-    localStorage.setItem("dispositions", JSON.stringify(dispositions));
-  }, [dispositions]);
-
-  useEffect(() => {
-    localStorage.setItem("memos", JSON.stringify(memos));
-  }, [memos]);
-
-  useEffect(() => {
-    localStorage.setItem("meetings", JSON.stringify(meetings));
-  }, [meetings]);
-
-  useEffect(() => {
-    localStorage.setItem("audit_logs", JSON.stringify(auditLogs));
-  }, [auditLogs]);
-
-  useEffect(() => {
-    localStorage.setItem("company_setting", JSON.stringify(companySetting));
-  }, [companySetting]);
-
+  // Keep active user session local to the device
   useEffect(() => {
     if (currentUser) {
       localStorage.setItem("current_user", JSON.stringify(currentUser));
@@ -667,12 +612,219 @@ export default function App() {
     }
   }, [currentUser]);
 
+  // --- REAL-TIME FIRESTORE MULTI-DEVICE SYNCHRONIZATION ---
+
+  // 1. Letters In (Surat Masuk)
   useEffect(() => {
-    localStorage.setItem("workspace_users", JSON.stringify(workspaceUsers));
-  }, [workspaceUsers]);
+    const colRef = collection(db, "letters_in");
+    const unsubscribe = onSnapshot(colRef, (snapshot) => {
+      if (snapshot.empty) {
+        seedLettersIn.forEach(async (letter) => {
+          try {
+            await setDoc(doc(db, "letters_in", letter.id), letter);
+          } catch (err) {
+            console.error("Error seeding letters_in to Firestore:", err);
+          }
+        });
+      } else {
+        const list: LetterIn[] = [];
+        snapshot.forEach((d) => {
+          list.push(d.data() as LetterIn);
+        });
+        list.sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+        setLettersIn(list);
+      }
+    }, (error) => {
+      handleFirestoreError(error, OperationType.GET, "letters_in");
+    });
+    return () => unsubscribe();
+  }, []);
+
+  // 2. Letters Out (Surat Keluar)
+  useEffect(() => {
+    const colRef = collection(db, "letters_out");
+    const unsubscribe = onSnapshot(colRef, (snapshot) => {
+      if (snapshot.empty) {
+        seedLettersOut.forEach(async (letter) => {
+          try {
+            await setDoc(doc(db, "letters_out", letter.id), letter);
+          } catch (err) {
+            console.error("Error seeding letters_out to Firestore:", err);
+          }
+        });
+      } else {
+        const list: LetterOut[] = [];
+        snapshot.forEach((d) => {
+          list.push(d.data() as LetterOut);
+        });
+        list.sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+        setLettersOut(list);
+      }
+    }, (error) => {
+      handleFirestoreError(error, OperationType.GET, "letters_out");
+    });
+    return () => unsubscribe();
+  }, []);
+
+  // 3. Dispositions
+  useEffect(() => {
+    const colRef = collection(db, "dispositions");
+    const unsubscribe = onSnapshot(colRef, (snapshot) => {
+      if (snapshot.empty) {
+        seedDispositions.forEach(async (disp) => {
+          try {
+            await setDoc(doc(db, "dispositions", disp.id), disp);
+          } catch (err) {
+            console.error("Error seeding dispositions to Firestore:", err);
+          }
+        });
+      } else {
+        const list: Disposition[] = [];
+        snapshot.forEach((d) => {
+          list.push(d.data() as Disposition);
+        });
+        list.sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+        setDispositions(list);
+      }
+    }, (error) => {
+      handleFirestoreError(error, OperationType.GET, "dispositions");
+    });
+    return () => unsubscribe();
+  }, []);
+
+  // 4. Memos
+  useEffect(() => {
+    const colRef = collection(db, "memos");
+    const unsubscribe = onSnapshot(colRef, (snapshot) => {
+      if (snapshot.empty) {
+        seedMemos.forEach(async (memo) => {
+          try {
+            await setDoc(doc(db, "memos", memo.id), memo);
+          } catch (err) {
+            console.error("Error seeding memos to Firestore:", err);
+          }
+        });
+      } else {
+        const list: Memo[] = [];
+        snapshot.forEach((d) => {
+          list.push(d.data() as Memo);
+        });
+        list.sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+        setMemos(list);
+      }
+    }, (error) => {
+      handleFirestoreError(error, OperationType.GET, "memos");
+    });
+    return () => unsubscribe();
+  }, []);
+
+  // 5. Meetings
+  useEffect(() => {
+    const colRef = collection(db, "meetings");
+    const unsubscribe = onSnapshot(colRef, (snapshot) => {
+      if (snapshot.empty) {
+        seedMeetings.forEach(async (meet) => {
+          try {
+            await setDoc(doc(db, "meetings", meet.id), meet);
+          } catch (err) {
+            console.error("Error seeding meetings to Firestore:", err);
+          }
+        });
+      } else {
+        const list: Meeting[] = [];
+        snapshot.forEach((d) => {
+          list.push(d.data() as Meeting);
+        });
+        list.sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+        setMeetings(list);
+      }
+    }, (error) => {
+      handleFirestoreError(error, OperationType.GET, "meetings");
+    });
+    return () => unsubscribe();
+  }, []);
+
+  // 6. Audit Logs
+  useEffect(() => {
+    const colRef = collection(db, "audit_logs");
+    const unsubscribe = onSnapshot(colRef, (snapshot) => {
+      if (snapshot.empty) {
+        seedAuditLogs.forEach(async (log) => {
+          try {
+            await setDoc(doc(db, "audit_logs", log.id), log);
+          } catch (err) {
+            console.error("Error seeding audit_logs to Firestore:", err);
+          }
+        });
+      } else {
+        const list: AuditLog[] = [];
+        snapshot.forEach((d) => {
+          list.push(d.data() as AuditLog);
+        });
+        list.sort((a, b) => b.timestamp.localeCompare(a.timestamp));
+        setAuditLogs(list);
+      }
+    }, (error) => {
+      handleFirestoreError(error, OperationType.GET, "audit_logs");
+    });
+    return () => unsubscribe();
+  }, []);
+
+  // 7. Settings (Global)
+  useEffect(() => {
+    const docRef = doc(db, "settings", "global");
+    const unsubscribe = onSnapshot(docRef, async (snapshot) => {
+      if (!snapshot.exists()) {
+        try {
+          await setDoc(docRef, DEFAULT_SETTING);
+        } catch (err) {
+          console.error("Error seeding settings to Firestore:", err);
+        }
+      } else {
+        const data = snapshot.data() as CompanySetting;
+        if (!data.companyLogo) {
+          data.companyLogo = DEFAULT_LOGO_BASE64;
+          try {
+            await setDoc(docRef, data);
+          } catch (err) {
+            console.error("Error updating settings logo in Firestore:", err);
+          }
+        }
+        setCompanySetting(data);
+      }
+    }, (error) => {
+      handleFirestoreError(error, OperationType.GET, "settings/global");
+    });
+    return () => unsubscribe();
+  }, []);
+
+  // 8. Workspace Users
+  useEffect(() => {
+    const colRef = collection(db, "users");
+    const unsubscribe = onSnapshot(colRef, (snapshot) => {
+      if (snapshot.empty) {
+        WORKSPACE_USERS.forEach(async (user) => {
+          try {
+            await setDoc(doc(db, "users", user.id), user);
+          } catch (err) {
+            console.error("Error seeding workspace users to Firestore:", err);
+          }
+        });
+      } else {
+        const list: UserProfile[] = [];
+        snapshot.forEach((d) => {
+          list.push(d.data() as UserProfile);
+        });
+        setWorkspaceUsers(list);
+      }
+    }, (error) => {
+      handleFirestoreError(error, OperationType.GET, "users");
+    });
+    return () => unsubscribe();
+  }, []);
 
   // Insert Audit helper
-  const addAuditLog = (activity: string, actionType: AuditLog["actionType"]) => {
+  const addAuditLog = async (activity: string, actionType: AuditLog["actionType"]) => {
     const newLog: AuditLog = {
       id: `audit-${Date.now()}-${Math.random().toString(36).substr(2, 4)}`,
       userId: currentUser?.id || "anonymous",
@@ -682,7 +834,11 @@ export default function App() {
       ipAddress: "192.168.1." + Math.floor(Math.random() * 254 + 1),
       timestamp: new Date().toISOString()
     };
-    setAuditLogs(prev => [newLog, ...prev]);
+    try {
+      await setDoc(doc(db, "audit_logs", newLog.id), newLog);
+    } catch (err) {
+      console.error("Failed to write audit log to Firestore:", err);
+    }
   };
 
   // Auth Quick Select
@@ -694,7 +850,6 @@ export default function App() {
   // Custom Form Login
   const handleCustomLogin = (e: React.FormEvent) => {
     e.preventDefault();
-    // Default fallback matching if credentials entered, fallback to Super Admin
     const preMatch = workspaceUsers.find(u => u.email === typedEmail);
     const resolvedUser = preMatch || workspaceUsers[0];
     setCurrentUser(resolvedUser);
@@ -709,24 +864,32 @@ export default function App() {
     setActiveTab("dashboard");
   };
 
-  // Core Mutation Operations passed down
-  const handleAddLetterIn = (newLetter: Omit<LetterIn, "id" | "createdAt" | "createdBy">) => {
+  // Core Mutation Operations connected directly to Firestore
+  const handleAddLetterIn = async (newLetter: Omit<LetterIn, "id" | "createdAt" | "createdBy">) => {
     const letter: LetterIn = {
       ...newLetter,
       id: `in-${Date.now()}`,
       createdAt: new Date().toISOString(),
       createdBy: currentUser?.name || "System"
     };
-    setLettersIn(prev => [letter, ...prev]);
-    addAuditLog(`Menambahkan surat masuk agenda: ${letter.agendaNumber}`, "Simpan Surat");
+    try {
+      await setDoc(doc(db, "letters_in", letter.id), letter);
+      addAuditLog(`Menambahkan surat masuk agenda: ${letter.agendaNumber}`, "Simpan Surat");
+    } catch (err) {
+      handleFirestoreError(err, OperationType.WRITE, `letters_in/${letter.id}`);
+    }
   };
 
-  const handleUpdateStatusIn = (letterId: string, status: LetterIn["status"]) => {
-    setLettersIn(prev => prev.map(l => l.id === letterId ? { ...l, status } : l));
-    addAuditLog(`Mengubah status surat masuk [ID: ${letterId}] menjadi ${status}`, "Edit Surat");
+  const handleUpdateStatusIn = async (letterId: string, status: LetterIn["status"]) => {
+    try {
+      await updateDoc(doc(db, "letters_in", letterId), { status });
+      addAuditLog(`Mengubah status surat masuk [ID: ${letterId}] menjadi ${status}`, "Edit Surat");
+    } catch (err) {
+      handleFirestoreError(err, OperationType.WRITE, `letters_in/${letterId}`);
+    }
   };
 
-  const handleAddDisposition = (letterId: string, disp: Omit<Disposition, "id" | "senderId" | "senderName" | "createdAt" | "letterSubject">) => {
+  const handleAddDisposition = async (letterId: string, disp: Omit<Disposition, "id" | "senderId" | "senderName" | "createdAt" | "letterSubject">) => {
     const selectedLetter = lettersIn.find(l => l.id === letterId);
     const newDisp: Disposition = {
       ...disp,
@@ -737,18 +900,21 @@ export default function App() {
       createdAt: new Date().toISOString()
     };
 
-    setDispositions(prev => [newDisp, ...prev]);
-    
-    // Mount inside the Letter item array
-    setLettersIn(prev => prev.map(l => {
-      if (l.id === letterId) {
-        const itemDisps = l.dispositions ? [...l.dispositions, newDisp] : [newDisp];
-        return { ...l, dispositions: itemDisps };
-      }
-      return l;
-    }));
+    try {
+      // 1. Save disposition
+      await setDoc(doc(db, "dispositions", newDisp.id), newDisp);
 
-    addAuditLog(`Mengirim disposisi instruksi kepada ${disp.targetRole}`, "Approval");
+      // 2. Add to letter's internal dispositions list
+      const itemDisps = selectedLetter?.dispositions ? [...selectedLetter.dispositions, newDisp] : [newDisp];
+      await updateDoc(doc(db, "letters_in", letterId), { 
+        dispositions: itemDisps,
+        status: "Didisposisi"
+      });
+
+      addAuditLog(`Mengirim disposisi instruksi kepada ${disp.targetRole}`, "Approval");
+    } catch (err) {
+      handleFirestoreError(err, OperationType.WRITE, `dispositions/${newDisp.id}`);
+    }
 
     // Automated function to send Resend email notification to the relevant department head
     try {
@@ -837,35 +1003,42 @@ Sistem Otomatis e-Office FORSDIG`;
     }
   };
 
-  const handleAddLetterOut = (newLetter: Omit<LetterOut, "id" | "createdAt">) => {
+  const handleAddLetterOut = async (newLetter: Omit<LetterOut, "id" | "createdAt">) => {
     const letter: LetterOut = {
       ...newLetter,
       id: `out-${Date.now()}`,
       createdAt: new Date().toISOString()
     };
-    setLettersOut(prev => [letter, ...prev]);
-    addAuditLog(`Membuat konsep surat keluar nomor: ${letter.letterNumber}`, "Simpan Surat");
+    try {
+      await setDoc(doc(db, "letters_out", letter.id), letter);
+      addAuditLog(`Membuat konsep surat keluar nomor: ${letter.letterNumber}`, "Simpan Surat");
+    } catch (err) {
+      handleFirestoreError(err, OperationType.WRITE, `letters_out/${letter.id}`);
+    }
   };
 
-  const handleUpdateStatusOut = (letterId: string, status: LetterOut["status"], note?: string) => {
-    setLettersOut(prev => prev.map(l => {
-      if (l.id === letterId) {
-        const hNode = {
-          role: currentUser?.role || "Staff",
-          user: currentUser?.name || "User",
-          action: `Setuju status ${status}`,
-          note: note || "",
-          timestamp: new Date().toISOString()
-        };
-        const hist = l.approvalHistory ? [...l.approvalHistory, hNode] : [hNode];
-        return { ...l, status, approvalHistory: hist };
-      }
-      return l;
-    }));
-    addAuditLog(`Workflow status surat keluar [ID: ${letterId}] disetujui ke: ${status}`, "Approval");
+  const handleUpdateStatusOut = async (letterId: string, status: LetterOut["status"], note?: string) => {
+    const targetLetter = lettersOut.find(l => l.id === letterId);
+    if (!targetLetter) return;
+
+    const hNode = {
+      role: currentUser?.role || "Staff",
+      user: currentUser?.name || "User",
+      action: `Setuju status ${status}`,
+      note: note || "",
+      timestamp: new Date().toISOString()
+    };
+    const hist = targetLetter.approvalHistory ? [...targetLetter.approvalHistory, hNode] : [hNode];
+
+    try {
+      await updateDoc(doc(db, "letters_out", letterId), { status, approvalHistory: hist });
+      addAuditLog(`Workflow status surat keluar [ID: ${letterId}] disetujui ke: ${status}`, "Approval");
+    } catch (err) {
+      handleFirestoreError(err, OperationType.WRITE, `letters_out/${letterId}`);
+    }
   };
 
-  const handleAddMemo = (newMemo: Omit<Memo, "id" | "createdAt" | "senderId" | "senderName">) => {
+  const handleAddMemo = async (newMemo: Omit<Memo, "id" | "createdAt" | "senderId" | "senderName">) => {
     const memo: Memo = {
       ...newMemo,
       id: `memo-${Date.now()}`,
@@ -873,18 +1046,58 @@ Sistem Otomatis e-Office FORSDIG`;
       senderName: currentUser?.name || "Manager",
       createdAt: new Date().toISOString()
     };
-    setMemos(prev => [memo, ...prev]);
-    addAuditLog(`Mengirim memo internal perihal: ${memo.subject}`, "Simpan Surat");
+    try {
+      await setDoc(doc(db, "memos", memo.id), memo);
+      addAuditLog(`Mengirim memo internal perihal: ${memo.subject}`, "Simpan Surat");
+    } catch (err) {
+      handleFirestoreError(err, OperationType.WRITE, `memos/${memo.id}`);
+    }
   };
 
-  const handleAddMeeting = (newMeeting: Omit<Meeting, "id" | "createdAt">) => {
+  const handleAddMeeting = async (newMeeting: Omit<Meeting, "id" | "createdAt">) => {
     const meet: Meeting = {
       ...newMeeting,
       id: `meet-${Date.now()}`,
       createdAt: new Date().toISOString()
     };
-    setMeetings(prev => [meet, ...prev]);
-    addAuditLog(`Penerbitan berita acara notulen rapat: ${meet.title}`, "Simpan Surat");
+    try {
+      await setDoc(doc(db, "meetings", meet.id), meet);
+      addAuditLog(`Penerbitan berita acara notulen rapat: ${meet.title}`, "Simpan Surat");
+    } catch (err) {
+      handleFirestoreError(err, OperationType.WRITE, `meetings/${meet.id}`);
+    }
+  };
+
+  const handleUpdateCompany = async (newSetting: CompanySetting) => {
+    try {
+      await setDoc(doc(db, "settings", "global"), newSetting);
+      addAuditLog("Mengubah pengaturan instansi perusahaan", "Edit Surat");
+    } catch (err) {
+      handleFirestoreError(err, OperationType.WRITE, "settings/global");
+    }
+  };
+
+  const handleClearAuditLogs = async () => {
+    try {
+      const colRef = collection(db, "audit_logs");
+      const snapshot = await getDocs(colRef);
+      snapshot.forEach(async (d) => {
+        await deleteDoc(doc(db, "audit_logs", d.id));
+      });
+      addAuditLog("Membersihkan seluruh riwayat audit log keamanan", "Logout");
+    } catch (err) {
+      handleFirestoreError(err, OperationType.DELETE, "audit_logs");
+    }
+  };
+
+  const handleUpdateUsers = async (updatedUsers: UserProfile[]) => {
+    try {
+      for (const u of updatedUsers) {
+        await setDoc(doc(db, "users", u.id), u);
+      }
+    } catch (err) {
+      handleFirestoreError(err, OperationType.WRITE, "users");
+    }
   };
 
   // Render main sub components based on current route
@@ -950,9 +1163,9 @@ Sistem Otomatis e-Office FORSDIG`;
             auditLogs={auditLogs}
             currentRole={currentUser.role}
             users={workspaceUsers}
-            onUpdateCompany={setCompanySetting}
-            onClearAuditLogs={() => setAuditLogs([])}
-            onUpdateUsers={setWorkspaceUsers}
+            onUpdateCompany={handleUpdateCompany}
+            onClearAuditLogs={handleClearAuditLogs}
+            onUpdateUsers={handleUpdateUsers}
           />
         );
       case "verification_scanner":

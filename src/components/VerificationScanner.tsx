@@ -32,6 +32,7 @@ interface VerificationScannerProps {
   companySetting: CompanySetting;
   onNavigate: (tab: string) => void;
   initialVerifyCode?: string | null;
+  isPublicMode?: boolean;
 }
 
 export default function VerificationScanner({ 
@@ -39,7 +40,8 @@ export default function VerificationScanner({
   lettersIn, 
   companySetting, 
   onNavigate,
-  initialVerifyCode
+  initialVerifyCode,
+  isPublicMode = false
 }: VerificationScannerProps) {
   const [activeScanMethod, setActiveScanMethod] = useState<"camera" | "upload" | "manual">("camera");
   const [scannedResult, setScannedResult] = useState<string | null>(null);
@@ -390,13 +392,20 @@ export default function VerificationScanner({
             Utilitas resmi pemindai QR Code dan Barcode sertifikat tanda tangan elektronik (TTE) PT Foresyndo Global Indonesia.
           </p>
         </div>
-        <button
-          onClick={() => onNavigate("surat_keluar")}
-          className="text-xs font-semibold bg-white dark:bg-slate-950 text-slate-700 dark:text-slate-300 border border-slate-250 dark:border-slate-800 px-3.5 py-2 rounded-xl hover:bg-slate-50 flex items-center gap-1.5 transition-all shadow-sm shrink-0 cursor-pointer"
-        >
-          <span>Daftar Surat Keluar</span>
-          <ArrowRight className="h-3.5 w-3.5" />
-        </button>
+        {!isPublicMode ? (
+          <button
+            onClick={() => onNavigate("surat_keluar")}
+            className="text-xs font-semibold bg-white dark:bg-slate-950 text-slate-700 dark:text-slate-300 border border-slate-250 dark:border-slate-800 px-3.5 py-2 rounded-xl hover:bg-slate-50 flex items-center gap-1.5 transition-all shadow-sm shrink-0 cursor-pointer"
+          >
+            <span>Daftar Surat Keluar</span>
+            <ArrowRight className="h-3.5 w-3.5" />
+          </button>
+        ) : (
+          <div className="flex items-center gap-1.5 bg-slate-200/70 dark:bg-slate-800/70 px-3 py-1.5 rounded-xl text-xs font-bold text-slate-700 dark:text-slate-300 shrink-0 font-mono">
+            <ShieldCheck className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />
+            <span>Akses Verifikasi Standalone</span>
+          </div>
+        )}
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">

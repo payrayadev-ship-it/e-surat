@@ -1294,19 +1294,14 @@ Sistem Otomatis e-Office FORSDIG`;
                     Portal Verifikasi Sertifikat & Dokumen Publik
                   </h1>
                   <p className="text-xs text-slate-500 dark:text-slate-400">
-                    PT Foresyndo Global Indonesia - Akses Pemindaian Tanpa Login
+                    PT Foresyndo Global Indonesia - Layanan Akses Verifikasi Eksternal
                   </p>
                 </div>
               </div>
-              <button
-                onClick={() => {
-                  setIsPublicVerify(false);
-                  setInitialVerifyCode(null);
-                }}
-                className="bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs py-2 px-4 rounded-xl cursor-pointer transition-all shadow-sm"
-              >
-                Masuk ke Aplikasi
-              </button>
+              <div className="flex items-center gap-2 bg-emerald-50 dark:bg-emerald-950/60 border border-emerald-200/80 dark:border-emerald-800 text-emerald-800 dark:text-emerald-300 font-bold text-xs py-2 px-3.5 rounded-xl shadow-xs">
+                <ShieldCheck className="h-4 w-4 text-emerald-600 dark:text-emerald-400 shrink-0" />
+                <span>Portal Verifikasi Eksternal Terisolasi</span>
+              </div>
             </div>
 
             <VerificationScanner
@@ -1320,6 +1315,7 @@ Sistem Otomatis e-Office FORSDIG`;
                 }
               }}
               initialVerifyCode={initialVerifyCode}
+              isPublicMode={true}
             />
           </div>
         </div>

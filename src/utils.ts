@@ -422,3 +422,24 @@ export const seedAuditLogs: AuditLog[] = [
     timestamp: "2026-06-15T05:46:00Z"
   }
 ];
+
+/**
+ * Recursively removes any object keys whose values are `undefined`,
+ * preventing Firestore `setDoc`, `addDoc`, or `updateDoc` from throwing errors.
+ */
+export function sanitizeForFirestore<T>(obj: T): T {
+  if (obj === null || typeof obj !== "object") {
+    return obj;
+  }
+  if (Array.isArray(obj)) {
+    return obj.map(sanitizeForFirestore) as unknown as T;
+  }
+  const cleaned: Record<string, any> = {};
+  for (const [key, value] of Object.entries(obj as Record<string, any>)) {
+    if (value !== undefined) {
+      cleaned[key] = typeof value === "object" && value !== null ? sanitizeForFirestore(value) : value;
+    }
+  }
+  return cleaned as T;
+}
+

@@ -524,7 +524,7 @@ export default function SuratMasuk({
     e.preventDefault();
     if (!letterNo || !senderName || !subjectText) return;
 
-    onAddLetter({
+    const newLetterData: Omit<LetterIn, "id" | "createdAt" | "createdBy"> = {
       agendaNumber: agendaNo || `${String(letters.length + 1).padStart(3, "0")}/A-SM/VI/2026`,
       letterNumber: letterNo,
       letterDate: letterDate || new Date().toISOString().split("T")[0],
@@ -534,10 +534,15 @@ export default function SuratMasuk({
       subject: subjectText,
       category: categoryVal,
       urgency: urgencyVal,
-      attachmentName: attachedName || undefined,
-      attachmentUrl: attachedName ? `letters/${attachedName}` : undefined,
       status: "Baru"
-    });
+    };
+
+    if (attachedName) {
+      newLetterData.attachmentName = attachedName;
+      newLetterData.attachmentUrl = `letters/${attachedName}`;
+    }
+
+    onAddLetter(newLetterData);
 
     // Reset Form
     setLetterNo("");

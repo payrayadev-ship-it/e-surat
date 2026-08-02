@@ -16,7 +16,8 @@ import {
 import { 
   seedLettersIn, seedLettersOut, seedDispositions, 
   seedMemos, seedMeetings, seedAuditLogs,
-  generateVerificationQR, downloadVerificationQRPNG, generateVerificationQRDataURL
+  generateVerificationQR, downloadVerificationQRPNG, generateVerificationQRDataURL,
+  sanitizeForFirestore
 } from "./utils";
 
 import Dashboard from "./components/Dashboard";
@@ -681,7 +682,7 @@ export default function App() {
       if (snapshot.empty) {
         seedLettersIn.forEach(async (letter) => {
           try {
-            await setDoc(doc(db, "letters_in", letter.id), letter);
+            await setDoc(doc(db, "letters_in", letter.id), sanitizeForFirestore(letter));
           } catch (err) {
             console.error("Error seeding letters_in to Firestore:", err);
           }
@@ -707,7 +708,7 @@ export default function App() {
       if (snapshot.empty) {
         seedLettersOut.forEach(async (letter) => {
           try {
-            await setDoc(doc(db, "letters_out", letter.id), letter);
+            await setDoc(doc(db, "letters_out", letter.id), sanitizeForFirestore(letter));
           } catch (err) {
             console.error("Error seeding letters_out to Firestore:", err);
           }
@@ -895,7 +896,7 @@ export default function App() {
       timestamp: new Date().toISOString()
     };
     try {
-      await setDoc(doc(db, "audit_logs", newLog.id), newLog);
+      await setDoc(doc(db, "audit_logs", newLog.id), sanitizeForFirestore(newLog));
     } catch (err) {
       console.error("Failed to write audit log to Firestore:", err);
     }
@@ -930,10 +931,13 @@ export default function App() {
       ...newLetter,
       id: `in-${Date.now()}`,
       createdAt: new Date().toISOString(),
-      createdBy: currentUser?.name || "System"
+      createdBy: currentUser?.name || "System",
+      attachmentName: newLetter.attachmentName ?? "",
+      attachmentUrl: newLetter.attachmentUrl ?? "",
+      dispositions: newLetter.dispositions ?? []
     };
     try {
-      await setDoc(doc(db, "letters_in", letter.id), letter);
+      await setDoc(doc(db, "letters_in", letter.id), sanitizeForFirestore(letter));
       addAuditLog(`Menambahkan surat masuk agenda: ${letter.agendaNumber}`, "Simpan Surat");
     } catch (err) {
       handleFirestoreError(err, OperationType.WRITE, `letters_in/${letter.id}`);
@@ -942,7 +946,7 @@ export default function App() {
 
   const handleUpdateStatusIn = async (letterId: string, status: LetterIn["status"]) => {
     try {
-      await updateDoc(doc(db, "letters_in", letterId), { status });
+      await updateDoc(doc(db, "letters_in", letterId), sanitizeForFirestore({ status }));
       addAuditLog(`Mengubah status surat masuk [ID: ${letterId}] menjadi ${status}`, "Edit Surat");
     } catch (err) {
       handleFirestoreError(err, OperationType.WRITE, `letters_in/${letterId}`);
@@ -962,14 +966,14 @@ export default function App() {
 
     try {
       // 1. Save disposition
-      await setDoc(doc(db, "dispositions", newDisp.id), newDisp);
+      await setDoc(doc(db, "dispositions", newDisp.id), sanitizeForFirestore(newDisp));
 
       // 2. Add to letter's internal dispositions list
       const itemDisps = selectedLetter?.dispositions ? [...selectedLetter.dispositions, newDisp] : [newDisp];
-      await updateDoc(doc(db, "letters_in", letterId), { 
+      await updateDoc(doc(db, "letters_in", letterId), sanitizeForFirestore({ 
         dispositions: itemDisps,
         status: "Didisposisi"
-      });
+      }));
 
       addAuditLog(`Mengirim disposisi instruksi kepada ${disp.targetRole}`, "Approval");
     } catch (err) {
@@ -1086,10 +1090,15 @@ Sistem Otomatis e-Office FORSDIG`;
     const letter: LetterOut = {
       ...newLetter,
       id: `out-${Date.now()}`,
-      createdAt: new Date().toISOString()
+      createdAt: new Date().toISOString(),
+      signatureUrl: newLetter.signatureUrl ?? "",
+      recipientEmail: newLetter.recipientEmail ?? "",
+      category: newLetter.category ?? "Surat Keluar",
+      signatureType: newLetter.signatureType ?? "Canvas",
+      approvalHistory: newLetter.approvalHistory ?? []
     };
     try {
-      await setDoc(doc(db, "letters_out", letter.id), letter);
+      await setDoc(doc(db, "letters_out", letter.id), sanitizeForFirestore(letter));
       addAuditLog(`Membuat konsep surat keluar nomor: ${letter.letterNumber}`, "Simpan Surat");
     } catch (err) {
       handleFirestoreError(err, OperationType.WRITE, `letters_out/${letter.id}`);
@@ -1110,7 +1119,7 @@ Sistem Otomatis e-Office FORSDIG`;
     const hist = targetLetter.approvalHistory ? [...targetLetter.approvalHistory, hNode] : [hNode];
 
     try {
-      await updateDoc(doc(db, "letters_out", letterId), { status, approvalHistory: hist });
+      await updateDoc(doc(db, "letters_out", letterId), sanitizeForFirestore({ status, approvalHistory: hist }));
       addAuditLog(`Workflow status surat keluar [ID: ${letterId}] disetujui ke: ${status}`, "Approval");
     } catch (err) {
       handleFirestoreError(err, OperationType.WRITE, `letters_out/${letterId}`);
@@ -1126,7 +1135,7 @@ Sistem Otomatis e-Office FORSDIG`;
       createdAt: new Date().toISOString()
     };
     try {
-      await setDoc(doc(db, "memos", memo.id), memo);
+      await setDoc(doc(db, "memos", memo.id), sanitizeForFirestore(memo));
       addAuditLog(`Mengirim memo internal perihal: ${memo.subject}`, "Simpan Surat");
     } catch (err) {
       handleFirestoreError(err, OperationType.WRITE, `memos/${memo.id}`);
@@ -1140,7 +1149,7 @@ Sistem Otomatis e-Office FORSDIG`;
       createdAt: new Date().toISOString()
     };
     try {
-      await setDoc(doc(db, "meetings", meet.id), meet);
+      await setDoc(doc(db, "meetings", meet.id), sanitizeForFirestore(meet));
       addAuditLog(`Penerbitan berita acara notulen rapat: ${meet.title}`, "Simpan Surat");
     } catch (err) {
       handleFirestoreError(err, OperationType.WRITE, `meetings/${meet.id}`);
@@ -1149,7 +1158,7 @@ Sistem Otomatis e-Office FORSDIG`;
 
   const handleUpdateCompany = async (newSetting: CompanySetting) => {
     try {
-      await setDoc(doc(db, "settings", "global"), newSetting);
+      await setDoc(doc(db, "settings", "global"), sanitizeForFirestore(newSetting));
       addAuditLog("Mengubah pengaturan instansi perusahaan", "Edit Surat");
     } catch (err) {
       handleFirestoreError(err, OperationType.WRITE, "settings/global");
@@ -1172,7 +1181,7 @@ Sistem Otomatis e-Office FORSDIG`;
   const handleUpdateUsers = async (updatedUsers: UserProfile[]) => {
     try {
       for (const u of updatedUsers) {
-        await setDoc(doc(db, "users", u.id), u);
+        await setDoc(doc(db, "users", u.id), sanitizeForFirestore(u));
       }
     } catch (err) {
       handleFirestoreError(err, OperationType.WRITE, "users");

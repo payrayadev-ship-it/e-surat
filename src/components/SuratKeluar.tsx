@@ -443,23 +443,31 @@ export default function SuratKeluar({
     const letterNoAuto = generateLetterNumber(indexSeq, companySetting, letterCategory);
     const verificationCode = `DOC-${new Date().toISOString().replace(/[-:T]/g, "").substring(0, 8)}-${String(indexSeq + 1).padStart(3, "0")}`;
 
-    onAddLetter({
+    const newLetterData: Omit<LetterOut, "id" | "createdAt"> = {
       letterNumber: letterNoAuto,
       letterDate: new Date().toISOString().split("T")[0],
       recipient: recipientName,
       recipientInstitution: recipientInst || "PT Umum / Klien Resmi",
-      recipientEmail: recipientEmail || undefined,
       subject: subjectVal || "Surat Resmi Korespondensi",
       content: contentVal,
       category: letterCategory,
       status: "Draft",
       signatureEnabled: sigType === "QR" || sigDataUrl !== "",
-      signatureUrl: sigType === "QR" ? undefined : (sigDataUrl !== "" ? sigDataUrl : undefined),
       signatureType: sigType,
       verificationCode: verificationCode,
       signatory: signatoryName || "Ir. Joko Sutrisno, M.T.",
       draftBy: currentUser.name
-    });
+    };
+
+    if (recipientEmail) {
+      newLetterData.recipientEmail = recipientEmail;
+    }
+
+    if (sigType !== "QR" && sigDataUrl !== "") {
+      newLetterData.signatureUrl = sigDataUrl;
+    }
+
+    onAddLetter(newLetterData);
 
     // Reset Form fields
     setRecipientName("");

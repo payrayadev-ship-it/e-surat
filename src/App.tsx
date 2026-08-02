@@ -542,7 +542,7 @@ export default function App() {
       doc.roundedRect(20, footerY - 2, 78, qrBoxSize + 8, 2, 2, "FD");
 
       const qrCodeVal = letter.verificationCode || `TTE-${Date.now()}`;
-      const qrPayload = `${window.location.origin}${window.location.pathname}?verify=${encodeURIComponent(qrCodeVal)}`;
+      const qrPayload = `DOKUMEN TERVERIFIKASI SAH\nSERTIFIKAT SAH\nKode: ${qrCodeVal}\nVerifikasi: ${window.location.origin}${window.location.pathname}?verify=${encodeURIComponent(qrCodeVal)}`;
 
       try {
         const qrDataUrl = await generateVerificationQRDataURL(qrPayload, 300);
@@ -554,15 +554,15 @@ export default function App() {
       }
 
       // Text credentials
-      doc.setTextColor(30, 41, 142);
+      doc.setTextColor(16, 185, 129); // Emerald Green
       doc.setFont("helvetica", "bold");
       doc.setFontSize(8);
-      doc.text("SECURITY CHECK VERIFIED", 54, footerY + 5);
+      doc.text("DOKUMEN TERVERIFIKASI SAH", 54, footerY + 5);
 
-      doc.setFont("helvetica", "normal");
+      doc.setFont("helvetica", "bold");
       doc.setFontSize(7.5);
-      doc.setTextColor(100, 116, 139);
-      doc.text("Valid Digital Signature", 54, footerY + 9);
+      doc.setTextColor(30, 41, 142);
+      doc.text("SERTIFIKAT SAH", 54, footerY + 9);
       
       doc.setFont("courier", "bold");
       doc.setFontSize(7.5);

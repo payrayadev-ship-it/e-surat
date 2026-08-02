@@ -142,6 +142,14 @@ export default function VerificationScanner({
     // Clean code extraction
     let cleanCode = inputString.trim();
 
+    // If payload contains multiline or formatted SERTIFIKAT SAH data, extract verification code if present
+    if (cleanCode.includes("Kode:")) {
+      const codeMatch = cleanCode.match(/Kode:\s*([^\s\n]+)/);
+      if (codeMatch && codeMatch[1]) {
+        cleanCode = codeMatch[1].trim();
+      }
+    }
+
     // 1. Detect if it's a verification URL (?verify=DOC-XXXX-YYY)
     if (cleanCode.includes("?verify=")) {
       const parts = cleanCode.split("?verify=");

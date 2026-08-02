@@ -490,7 +490,7 @@ export default function SuratKeluar({
   // Download QR Code as premium SVG file
   const handleDownloadQR = (letter: LetterOut) => {
     const qrSvgString = generateVerificationQR(
-      `FORSDIG-DOC|id:${letter.id}|vcode:${letter.verificationCode}|status:${letter.status}|signatory:${letter.signatory}`, 
+      `DOKUMEN TERVERIFIKASI SAH\nSERTIFIKAT SAH\nKode: ${letter.verificationCode}\nID: ${letter.id}`, 
       300, 
       300
     );
@@ -827,7 +827,7 @@ export default function SuratKeluar({
     const startQRX = leftMargin + 4;
     const startQRY = footerY + 6.5;
 
-    const qrPayload = `${window.location.origin}${window.location.pathname}?verify=${encodeURIComponent(letter.verificationCode || letter.id)}`;
+    const qrPayload = `DOKUMEN TERVERIFIKASI SAH\nSERTIFIKAT SAH\nKode: ${letter.verificationCode || letter.id}\nVerifikasi: ${window.location.origin}${window.location.pathname}?verify=${encodeURIComponent(letter.verificationCode || letter.id)}`;
     try {
       const qrDataUrl = await generateVerificationQRDataURL(qrPayload, 300);
       if (qrDataUrl) {
@@ -839,10 +839,10 @@ export default function SuratKeluar({
 
     // QR Code Metadata descriptions
     const qrDescX = leftMargin + 4 + qrBoxSize + 4;
-    doc.setTextColor(30, 41, 59);
+    doc.setTextColor(16, 185, 129); // Emerald Green
     doc.setFont("helvetica", "bold");
-    doc.setFontSize(7.5);
-    doc.text("Sistem e-Sign FORSDIG", qrDescX, footerY + 11);
+    doc.setFontSize(8);
+    doc.text("SERTIFIKAT SAH", qrDescX, footerY + 11);
     
     doc.setFont("courier", "bold");
     doc.setFontSize(8.5);
@@ -853,7 +853,7 @@ export default function SuratKeluar({
     doc.setFont("helvetica", "normal");
     doc.setFontSize(6.5);
     doc.text("Pindai QR dengan kamera", qrDescX, footerY + 20);
-    doc.text("untuk melihat berkas asli", qrDescX, footerY + 23.5);
+    doc.text("DOKUMEN TERVERIFIKASI SAH", qrDescX, footerY + 23.5);
     doc.text("dan audit log pelacakan instansi.", qrDescX, footerY + 27);
 
     // B. Corporate Right Sign-stamp Signatory block
@@ -895,11 +895,11 @@ export default function SuratKeluar({
 
     if (letter.signatureEnabled && letter.signatureType === "QR") {
       // Draw signature as a sophisticated official QR Code digital signature (TTE Barcode)
-      const sigCode = `TTE-${letter.verificationCode.substring(4)}`;
+      const sigCode = `DOKUMEN TERVERIFIKASI SAH - SERTIFIKAT SAH (${letter.verificationCode})`;
       
       // Draw a neat bounding box with scan indicator
       doc.setFillColor(248, 250, 252);
-      doc.setDrawColor(29, 78, 216);
+      doc.setDrawColor(16, 185, 129);
       doc.setLineWidth(0.25);
       doc.roundedRect(signX, footerY + 5, 44, 16, 1, 1, "FD");
 
@@ -914,21 +914,23 @@ export default function SuratKeluar({
       }
 
       // Add descriptive labels next to the QR code inside the box
-      doc.setTextColor(29, 78, 216);
+      doc.setTextColor(16, 185, 129);
       doc.setFont("helvetica", "bold");
       doc.setFontSize(6.5);
-      doc.text("TTE VERIFIED", signX + 14, footerY + 9.5);
+      doc.text("SERTIFIKAT SAH", signX + 14, footerY + 9.5);
       
+      doc.setTextColor(30, 41, 59);
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(4.5);
+      doc.text("DOKUMEN TERVERIFIKASI SAH", signX + 14, footerY + 12.5);
       doc.setTextColor(71, 85, 105);
       doc.setFont("helvetica", "normal");
-      doc.setFontSize(5);
-      doc.text("Ditandatangani secara", signX + 14, footerY + 12.5);
-      doc.text("elektronik via FGI Hub", signX + 14, footerY + 14.5);
+      doc.text("e-Sign Resmi TTE", signX + 14, footerY + 14.5);
       
       doc.setFont("courier", "bold");
-      doc.setFontSize(4.5);
+      doc.setFontSize(4);
       doc.setTextColor(30, 41, 142);
-      doc.text(sigCode, signX + 14, footerY + 17.5);
+      doc.text(letter.verificationCode, signX + 14, footerY + 17.5);
     } else if (letter.signatureEnabled && activeSignature) {
       try {
         doc.addImage(activeSignature, "PNG", signX - 2, footerY + 6, 32, 14);

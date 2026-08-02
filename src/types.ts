@@ -8,6 +8,8 @@ export interface UserProfile {
   avatarUrl?: string;
   signatureUrl?: string; // Base64 PNG signature
   createdAt?: string;
+  passkeyStatus?: "Aktif" | "Perlu Reset" | "Belum Didaftarkan";
+  lastPasswordChange?: string;
 }
 
 export interface LetterIn {
@@ -117,4 +119,11 @@ export interface CompanySetting {
   smtpPort: number;
   smtpUser: string;
   companyLogo?: string; // Base64 or URL of the corporate logo
+  // Passkey & Password Security Settings
+  minPasswordLength?: number;
+  requireComplexPassword?: boolean;
+  passkeyExpirationDays?: number;
+  enablePasskeyAuth?: boolean;
+  maxFailedPasskeyAttempts?: number;
+  masterPasskeyPIN?: string;
 }

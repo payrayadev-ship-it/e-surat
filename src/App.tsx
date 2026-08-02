@@ -42,35 +42,45 @@ const WORKSPACE_USERS: UserProfile[] = [
     name: "Andi Wijaya, S.Kom.",
     email: "admin@forsdig-office.co.id",
     role: "Super Admin",
-    avatarUrl: "https://images.unsplash.com/photo-1519085360753-af0119f7cbe7?auto=format&fit=crop&q=80&w=120"
+    avatarUrl: "https://images.unsplash.com/photo-1519085360753-af0119f7cbe7?auto=format&fit=crop&q=80&w=120",
+    passkeyStatus: "Aktif",
+    lastPasswordChange: "2026-08-01"
   },
   {
     id: "user_dir",
     name: "Ir. Joko Sutrisno, M.T.",
     email: "joko.sutrisno@forsdig.com",
     role: "Direktur",
-    avatarUrl: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&q=80&w=120"
+    avatarUrl: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&q=80&w=120",
+    passkeyStatus: "Aktif",
+    lastPasswordChange: "2026-07-15"
   },
   {
     id: "user_mng",
     name: "Dewi Lestari, S.E.",
     email: "dewi.lestari@forsdig.com",
     role: "Manager",
-    avatarUrl: "https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?auto=format&fit=crop&q=80&w=120"
+    avatarUrl: "https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?auto=format&fit=crop&q=80&w=120",
+    passkeyStatus: "Aktif",
+    lastPasswordChange: "2026-07-20"
   },
   {
     id: "user_stf",
     name: "Budi Pratama",
     email: "budi.pratama@forsdig.com",
     role: "Staff",
-    avatarUrl: "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&q=80&w=120"
+    avatarUrl: "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&q=80&w=120",
+    passkeyStatus: "Perlu Reset",
+    lastPasswordChange: "2026-05-10"
   },
   {
     id: "user_vwr",
     name: "Tamu Peninjau",
     email: "viewer@forsdig-office.co.id",
     role: "Viewer",
-    avatarUrl: "https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&q=80&w=120"
+    avatarUrl: "https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&q=80&w=120",
+    passkeyStatus: "Belum Didaftarkan",
+    lastPasswordChange: "2026-06-01"
   }
 ];
 
@@ -84,7 +94,13 @@ const DEFAULT_SETTING: CompanySetting = {
   companyLogo: DEFAULT_LOGO_BASE64,
   smtpHost: "smtp.forsdig-office.co.id",
   smtpPort: 587,
-  smtpUser: "notifications@forsdig.com"
+  smtpUser: "notifications@forsdig.com",
+  minPasswordLength: 8,
+  requireComplexPassword: true,
+  passkeyExpirationDays: 90,
+  enablePasskeyAuth: true,
+  maxFailedPasskeyAttempts: 5,
+  masterPasskeyPIN: "889900"
 };
 
 export default function App() {
@@ -1369,7 +1385,7 @@ Sistem Otomatis e-Office FORSDIG`;
           {/* Form and profile selector column block */}
           <div className="md:col-span-7 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-850 rounded-2xl shadow-xl overflow-hidden">
             <div className="p-4 bg-slate-50 dark:bg-slate-950 border-b border-slate-200 dark:border-slate-850 flex justify-between items-center">
-              <span className="text-xs font-bold text-slate-450 uppercase tracking-wider font-mono">Gateway Masuk Sandbox</span>
+              <span className="text-xs font-bold text-slate-450 uppercase tracking-wider font-mono">Gateway Masuk Portal Utama</span>
               <button onClick={() => setIsDark(!isDark)} className="p-1 px-2 hover:bg-slate-200 dark:hover:bg-slate-800 rounded">
                 {isDark ? <Sun className="h-4 w-4 text-amber-400" /> : <Moon className="h-4 w-4 text-slate-600" />}
               </button>
@@ -1378,7 +1394,7 @@ Sistem Otomatis e-Office FORSDIG`;
             <div className="p-6 md:p-8 space-y-6">
               {/* Profile Selection Shortcut list */}
               <div className="space-y-3">
-                <span className="block text-xs font-semibold text-slate-500">Pilih Role Akses Instan (Coba Demo):</span>
+                <span className="block text-xs font-semibold text-slate-500">Pilih Role Akses Instan:</span>
                 <div className="grid grid-cols-2 sm:grid-cols-5 gap-2" id="shortcut-roles">
                   {workspaceUsers.map((user) => (
                     <button

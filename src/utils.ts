@@ -353,15 +353,21 @@ export const seedCompanySetting: CompanySetting = {
   companyLogo: DEFAULT_LOGO_BASE64,
   smtpHost: "smtp.forsdig-teknologi.com",
   smtpPort: 587,
-  smtpUser: "notifications@forsdig-teknologi.com"
+  smtpUser: "notifications@forsdig-teknologi.com",
+  minPasswordLength: 8,
+  requireComplexPassword: true,
+  passkeyExpirationDays: 90,
+  enablePasskeyAuth: true,
+  maxFailedPasskeyAttempts: 5,
+  masterPasskeyPIN: "889900"
 };
 
 export const seedUsers = [
-  { id: "user_dir", name: "Ir. Joko Sutrisno, M.T.", email: "joko.sutrisno@forsdig.com", role: "Direktur", avatarUrl: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150" },
-  { id: "user_mng", name: "Dewi Lestari, S.E.", email: "dewi.lestari@forsdig.com", role: "Manager", avatarUrl: "https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=150" },
-  { id: "user_adm", name: "Andi Wijaya", email: "payrayadev@gmail.com", role: "Super Admin", avatarUrl: "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=150" },
-  { id: "user_stf", name: "Budi Pratama", email: "budi.pratama@forsdig.com", role: "Staff", avatarUrl: "https://images.unsplash.com/photo-1519085360753-af0119f7cbe7?w=150" },
-  { id: "user_vwr", name: "Siti Rahma", email: "siti@forsdig.com", role: "Viewer", avatarUrl: "https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=150" }
+  { id: "user_dir", name: "Ir. Joko Sutrisno, M.T.", email: "joko.sutrisno@forsdig.com", role: "Direktur" as const, avatarUrl: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150", passkeyStatus: "Aktif" as const, lastPasswordChange: "2026-07-15" },
+  { id: "user_mng", name: "Dewi Lestari, S.E.", email: "dewi.lestari@forsdig.com", role: "Manager" as const, avatarUrl: "https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=150", passkeyStatus: "Aktif" as const, lastPasswordChange: "2026-07-20" },
+  { id: "user_adm", name: "Andi Wijaya", email: "payrayadev@gmail.com", role: "Super Admin" as const, avatarUrl: "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=150", passkeyStatus: "Aktif" as const, lastPasswordChange: "2026-08-01" },
+  { id: "user_stf", name: "Budi Pratama", email: "budi.pratama@forsdig.com", role: "Staff" as const, avatarUrl: "https://images.unsplash.com/photo-1519085360753-af0119f7cbe7?w=150", passkeyStatus: "Perlu Reset" as const, lastPasswordChange: "2026-05-10" },
+  { id: "user_vwr", name: "Siti Rahma", email: "siti@forsdig.com", role: "Viewer" as const, avatarUrl: "https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=150", passkeyStatus: "Belum Didaftarkan" as const, lastPasswordChange: "2026-06-01" }
 ];
 
 export const seedLettersIn: LetterIn[] = [

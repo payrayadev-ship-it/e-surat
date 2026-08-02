@@ -241,6 +241,104 @@ export function injectTemplateVariables(template: string, vars: {
   return output;
 }
 
+export interface DocumentValidityInfo {
+  isValid: boolean;
+  isPermanent: boolean;
+  statusBadgeText: string;
+  statusDetailText: string;
+  validUntilFormatted: string;
+  daysRemainingOrExpired: number;
+}
+
+/**
+ * Validates document expiration date and calculates remaining days or expired duration.
+ */
+export function getDocumentValidityStatus(letterDate?: string, validUntil?: string): DocumentValidityInfo {
+  if (!validUntil || validUntil.toUpperCase() === "PERMANEN" || validUntil.toUpperCase() === "SELAMANYA") {
+    // If explicit PERMANEN
+    if (validUntil && (validUntil.toUpperCase() === "PERMANEN" || validUntil.toUpperCase() === "SELAMANYA")) {
+      return {
+        isValid: true,
+        isPermanent: true,
+        statusBadgeText: "BERLAKU PERMANEN",
+        statusDetailText: "Dokumen resmi ini berlaku selamanya tanpa batas waktu kedaluwarsa.",
+        validUntilFormatted: "Permanen (Berlaku Selamanya)",
+        daysRemainingOrExpired: 999999
+      };
+    }
+
+    // Default: If letterDate available, 1 year validity from letterDate
+    if (letterDate) {
+      const lDate = new Date(letterDate);
+      if (!isNaN(lDate.getTime())) {
+        const defaultExpiry = new Date(lDate);
+        defaultExpiry.setFullYear(defaultExpiry.getFullYear() + 1);
+        const yyyy = defaultExpiry.getFullYear();
+        const mm = String(defaultExpiry.getMonth() + 1).padStart(2, "0");
+        const dd = String(defaultExpiry.getDate()).padStart(2, "0");
+        return getDocumentValidityStatus(letterDate, `${yyyy}-${mm}-${dd}`);
+      }
+    }
+
+    return {
+      isValid: true,
+      isPermanent: true,
+      statusBadgeText: "BERLAKU PERMANEN",
+      statusDetailText: "Dokumen resmi ini berlaku selamanya tanpa batas waktu kedaluwarsa.",
+      validUntilFormatted: "Permanen (Berlaku Selamanya)",
+      daysRemainingOrExpired: 999999
+    };
+  }
+
+  const expiryDate = new Date(validUntil);
+  if (isNaN(expiryDate.getTime())) {
+    return {
+      isValid: true,
+      isPermanent: true,
+      statusBadgeText: "BERLAKU PERMANEN",
+      statusDetailText: "Dokumen resmi ini berlaku selamanya tanpa batas waktu kedaluwarsa.",
+      validUntilFormatted: "Permanen (Berlaku Selamanya)",
+      daysRemainingOrExpired: 999999
+    };
+  }
+
+  expiryDate.setHours(23, 59, 59, 999);
+  const now = new Date();
+
+  const diffMs = expiryDate.getTime() - now.getTime();
+  const diffDays = Math.ceil(diffMs / (1000 * 60 * 60 * 24));
+
+  const monthsIndo = [
+    "Januari", "Februari", "Maret", "April", "Mei", "Juni",
+    "Juli", "Agustus", "September", "Oktober", "November", "Desember"
+  ];
+  const day = expiryDate.getDate();
+  const month = monthsIndo[expiryDate.getMonth()];
+  const year = expiryDate.getFullYear();
+  const formattedExpiry = `${day} ${month} ${year}`;
+
+  if (diffDays >= 0) {
+    return {
+      isValid: true,
+      isPermanent: false,
+      statusBadgeText: "DOKUMEN MASIH AKTIF",
+      statusDetailText: `Masa berlaku dokumen ini masih aktif sampai dengan ${formattedExpiry} (${diffDays} hari lagi).`,
+      validUntilFormatted: formattedExpiry,
+      daysRemainingOrExpired: diffDays
+    };
+  } else {
+    const expiredDays = Math.abs(diffDays);
+    return {
+      isValid: false,
+      isPermanent: false,
+      statusBadgeText: "DOKUMEN KEDALUWARSA",
+      statusDetailText: `Masa berlaku dokumen telah berakhir pada ${formattedExpiry} (Kedaluwarsa ${expiredDays} hari yang lalu).`,
+      validUntilFormatted: formattedExpiry,
+      daysRemainingOrExpired: diffDays
+    };
+  }
+}
+
 /**
  * Hardcoded initial mock seeds for fallback and direct demonstration,
  * guaranteeing offline robustness.
@@ -332,6 +430,7 @@ export const seedLettersOut: LetterOut[] = [
     signatory: "Ir. Joko Sutrisno, M.T.",
     draftBy: "Andi Wijaya",
     createdAt: "2026-06-15T07:45:00Z",
+    validUntil: "2027-06-15",
     approvalHistory: [
       { role: "Staff", user: "Budi Pratama", action: "Draft Surat Keluar", timestamp: "2026-06-15T06:00:00Z" },
       { role: "Manager", user: "Dewi Lestari, S.E.", action: "Review & Setujui", note: "Format teks sudah rapi, silakan ke Direktur", timestamp: "2026-06-15T07:00:00Z" },
@@ -346,14 +445,34 @@ export const seedLettersOut: LetterOut[] = [
     recipientInstitution: "Direktur Pengadaan",
     subject: "Surat Perjanjian Kerja Sama Kemitraan Strategis Cloud",
     content: "Dengan hormat,\n\nSebagai kelanjutan dari nota kesepahaman (MoU) yang ditandatangani bulan lalu, melalui surat ini kami menyampaikan draf final hak dan kewajiban masing-masing pihak dalam penyediaan layanan cloud computing.\n\nFORSDIG bertindak sebagai integrator sistem dan penjamin SLA (Service Level Agreement) infrastruktur.\n\nAtas perhatian kawan-kawan, kami mengucapkan terima kasih.",
-    status: "Review",
-    signatureEnabled: false,
+    status: "Terkirim",
+    signatureEnabled: true,
     verificationCode: "DOC-20260615-002",
     signatory: "Ir. Joko Sutrisno, M.T.",
     draftBy: "Budi Pratama",
     createdAt: "2026-06-15T08:00:00Z",
+    validUntil: "PERMANEN",
     approvalHistory: [
       { role: "Staff", user: "Budi Pratama", action: "Draft Surat Keluar", timestamp: "2026-06-15T08:00:00Z" }
+    ]
+  },
+  {
+    id: "out_003",
+    letterNumber: "FORSDIG/2025/01/0088",
+    letterDate: "2025-01-10",
+    recipient: "CV Techno Mandiri",
+    recipientInstitution: "Divisi Operasional",
+    subject: "Sertifikat Lisensi Penggunaan Perangkat Lunak Sementara (Kedaluwarsa)",
+    content: "Dengan hormat,\n\nBersama surat ini kami menerbitkan Sertifikat Izin Lisensi Sementara untuk pengujian fitur beta e-Office FORSDIG selama periode kerja terbatas 6 bulan.\n\nLisensi ini berakhir secara otomatis setelah masa berlaku terlewati.",
+    status: "Terkirim",
+    signatureEnabled: true,
+    verificationCode: "DOC-20250110-088",
+    signatory: "Ir. Joko Sutrisno, M.T.",
+    draftBy: "Andi Wijaya",
+    createdAt: "2025-01-10T09:00:00Z",
+    validUntil: "2025-07-10",
+    approvalHistory: [
+      { role: "Staff", user: "Andi Wijaya", action: "Draft Surat", timestamp: "2025-01-10T09:00:00Z" }
     ]
   }
 ];

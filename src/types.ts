@@ -24,6 +24,7 @@ export interface LetterIn {
   attachmentName?: string;
   attachmentUrl?: string;
   status: "Baru" | "Diproses" | "Didisposisi" | "Selesai";
+  validUntil?: string; // Masa berlaku dokumen (e.g. YYYY-MM-DD or "PERMANEN")
   createdBy: string;
   createdAt: string;
   dispositions?: Disposition[];
@@ -47,6 +48,7 @@ export interface LetterOut {
   signatory: string; // Name of person signing
   draftBy: string;
   createdAt: string;
+  validUntil?: string; // Masa berlaku dokumen (e.g. YYYY-MM-DD or "PERMANEN")
   approvalHistory?: {
     role: UserRole;
     user: string;

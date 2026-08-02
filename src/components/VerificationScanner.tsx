@@ -17,10 +17,14 @@ import {
   X,
   AlertCircle,
   ExternalLink,
-  Copy
+  Copy,
+  Calendar,
+  AlertTriangle,
+  CheckCircle2,
+  XCircle
 } from "lucide-react";
 import { LetterOut, LetterIn, CompanySetting } from "../types";
-import { generateVerificationQR } from "../utils";
+import { generateVerificationQR, getDocumentValidityStatus } from "../utils";
 
 interface VerificationScannerProps {
   lettersOut: LetterOut[];
@@ -329,12 +333,17 @@ export default function VerificationScanner({
         y += 8;
       };
 
+      // Validity calculation
+      const valInfo = getDocumentValidityStatus(docItem.letterDate, docItem.validUntil);
+
       addRow("Kode Verifikasi TTE", docItem.verificationCode || "-");
       addRow("Nomor Surat / Berkas", docItem.letterNumber || "-");
       addRow("Tanggal Diterbitkan", docItem.letterDate || "-");
+      addRow("Masa Berlaku Dokumen", valInfo.validUntilFormatted);
+      addRow("Status Masa Berlaku", valInfo.isValid ? "DOKUMEN MASIH AKTIF / BERLAKU" : "KEDALUWARSA / EXPIRED");
       addRow("Penerima Dokumen", `${docItem.recipient || "-"} (${docItem.recipientInstitution || "-"})`);
       addRow("Penandatangan Sah", docItem.signatory || "-");
-      addRow("Status Verifikasi", "DOKUMEN TERVERIFIKASI SAH");
+      addRow("Status Keabsahan TTE", "DOKUMEN TERVERIFIKASI SAH");
       addRow("Waktu Pengecekan", verificationTime || new Date().toLocaleString("id-ID"));
 
       // Direct Link Text
@@ -568,22 +577,34 @@ export default function VerificationScanner({
               {lettersOut.length === 0 ? (
                 <p className="text-slate-400 text-xs italic">Belum ada surat keluar terdaftar.</p>
               ) : (
-                lettersOut.map((l) => (
-                  <button
-                    key={l.id}
-                    onClick={() => processVerificationCode(l.verificationCode)}
-                    className="w-full text-left p-2 bg-slate-50 hover:bg-slate-100 dark:bg-slate-950 dark:hover:bg-slate-850 rounded border border-slate-150 dark:border-slate-800/60 font-medium text-slate-650 dark:text-slate-400 flex items-center justify-between transition-colors group cursor-pointer"
-                  >
-                    <div className="truncate flex-1 pr-2">
-                      <p className="font-bold text-slate-800 dark:text-slate-200 truncate">{l.subject}</p>
-                      <span className="font-mono text-[9px] text-slate-400 block mt-0.5">{l.verificationCode}</span>
-                    </div>
-                    <span className="text-[10px] text-blue-600 dark:text-blue-400 group-hover:translate-x-0.5 transition-transform flex items-center gap-0.5 shrink-0 font-bold">
-                      <span>Uji</span>
-                      <ArrowRight className="h-3 w-3" />
-                    </span>
-                  </button>
-                ))
+                lettersOut.map((l) => {
+                  const val = getDocumentValidityStatus(l.letterDate, l.validUntil);
+                  return (
+                    <button
+                      key={l.id}
+                      onClick={() => processVerificationCode(l.verificationCode)}
+                      className="w-full text-left p-2 bg-slate-50 hover:bg-slate-100 dark:bg-slate-950 dark:hover:bg-slate-850 rounded border border-slate-150 dark:border-slate-800/60 font-medium text-slate-650 dark:text-slate-400 flex items-center justify-between transition-colors group cursor-pointer"
+                    >
+                      <div className="truncate flex-1 pr-2">
+                        <div className="flex items-center gap-1.5">
+                          <p className="font-bold text-slate-800 dark:text-slate-200 truncate">{l.subject}</p>
+                          <span className={`text-[8px] px-1.5 py-0.2 rounded font-bold shrink-0 ${
+                            val.isValid 
+                              ? "bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300" 
+                              : "bg-rose-100 text-rose-800 dark:bg-rose-950 dark:text-rose-300"
+                          }`}>
+                            {val.isValid ? "AKTIF" : "KEDALUWARSA"}
+                          </span>
+                        </div>
+                        <span className="font-mono text-[9px] text-slate-400 block mt-0.5">{l.verificationCode}</span>
+                      </div>
+                      <span className="text-[10px] text-blue-600 dark:text-blue-400 group-hover:translate-x-0.5 transition-transform flex items-center gap-0.5 shrink-0 font-bold">
+                        <span>Uji</span>
+                        <ArrowRight className="h-3 w-3" />
+                      </span>
+                    </button>
+                  );
+                })
               )}
             </div>
           </div>
@@ -681,6 +702,103 @@ export default function VerificationScanner({
                         </button>
                       </div>
                     </div>
+
+                    {/* Dedicated Validasi Masa Berlaku Dokumen Card */}
+                    {(() => {
+                      const valInfo = getDocumentValidityStatus(resolvedDoc.letterDate, resolvedDoc.validUntil);
+                      
+                      // Calculate retention progress bar percentage
+                      let progressPercent = 0;
+                      if (valInfo.isPermanent) {
+                        progressPercent = 100;
+                      } else if (resolvedDoc.letterDate && resolvedDoc.validUntil) {
+                        const start = new Date(resolvedDoc.letterDate).getTime();
+                        const end = new Date(resolvedDoc.validUntil).getTime();
+                        const now = new Date().getTime();
+                        if (end > start) {
+                          const total = end - start;
+                          const elapsed = now - start;
+                          progressPercent = Math.min(100, Math.max(0, Math.round((elapsed / total) * 100)));
+                        }
+                      }
+
+                      return (
+                        <div className={`p-4.5 rounded-2xl border-2 space-y-3 shadow-sm transition-all ${
+                          valInfo.isValid 
+                            ? "bg-emerald-50/90 dark:bg-emerald-950/40 border-emerald-500/50" 
+                            : "bg-rose-50/90 dark:bg-rose-950/40 border-rose-500/60"
+                        }`}>
+                          <div className="flex flex-wrap items-center justify-between gap-2">
+                            <span className={`text-[11px] font-extrabold uppercase tracking-wider flex items-center gap-1.5 ${
+                              valInfo.isValid ? "text-emerald-800 dark:text-emerald-300" : "text-rose-800 dark:text-rose-300"
+                            }`}>
+                              <Calendar className="h-4 w-4" />
+                              <span>VALIDASI MASA BERLAKU DOKUMEN</span>
+                            </span>
+                            <span className={`text-[10px] font-mono px-3 py-1 rounded-full font-extrabold flex items-center gap-1.5 ${
+                              valInfo.isValid 
+                                ? "bg-emerald-100 dark:bg-emerald-900/80 text-emerald-800 dark:text-emerald-200" 
+                                : "bg-rose-100 dark:bg-rose-900/80 text-rose-800 dark:text-rose-200 animate-pulse"
+                            }`}>
+                              {valInfo.isValid ? (
+                                <>
+                                  <CheckCircle2 className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400" />
+                                  <span>{valInfo.statusBadgeText}</span>
+                                </>
+                              ) : (
+                                <>
+                                  <AlertTriangle className="h-3.5 w-3.5 text-rose-600 dark:text-rose-400" />
+                                  <span>{valInfo.statusBadgeText}</span>
+                                </>
+                              )}
+                            </span>
+                          </div>
+
+                          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-3.5 rounded-xl space-y-3">
+                            <p className="text-xs md:text-sm font-semibold text-slate-800 dark:text-slate-200 leading-relaxed">
+                              {valInfo.statusDetailText}
+                            </p>
+
+                            {/* Visual Progress Bar for Retention / Validity */}
+                            {!valInfo.isPermanent && (
+                              <div className="space-y-1">
+                                <div className="flex justify-between items-center text-[10px] font-mono font-bold text-slate-500">
+                                  <span>Tingkat Retensi Terpakai: {progressPercent}%</span>
+                                  <span>
+                                    {valInfo.isValid 
+                                      ? `Sisa Retensi: ${valInfo.daysRemainingOrExpired} Hari` 
+                                      : `Terlewat ${Math.abs(valInfo.daysRemainingOrExpired)} Hari`}
+                                  </span>
+                                </div>
+                                <div className="w-full bg-slate-100 dark:bg-slate-800 rounded-full h-2 overflow-hidden border border-slate-200 dark:border-slate-700">
+                                  <div 
+                                    className={`h-full transition-all duration-500 rounded-full ${
+                                      valInfo.isValid 
+                                        ? progressPercent > 80 ? "bg-amber-500" : "bg-emerald-500" 
+                                        : "bg-rose-600"
+                                    }`}
+                                    style={{ width: `${progressPercent}%` }}
+                                  />
+                                </div>
+                              </div>
+                            )}
+
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2.5 border-t border-slate-100 dark:border-slate-800/80 text-xs">
+                              <div className="space-y-0.5">
+                                <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider block">Tanggal Diterbitkan</span>
+                                <span className="font-bold text-slate-800 dark:text-slate-200 font-mono">{resolvedDoc.letterDate || "-"}</span>
+                              </div>
+                              <div className="space-y-0.5">
+                                <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider block">Batas Masa Berlaku</span>
+                                <span className={`font-extrabold font-mono ${valInfo.isValid ? "text-emerald-700 dark:text-emerald-400" : "text-rose-600 dark:text-rose-400"}`}>
+                                  {valInfo.validUntilFormatted}
+                                </span>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })()}
 
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs md:text-sm">
                       <div className="p-3 bg-slate-50 dark:bg-slate-950 rounded-xl border border-slate-150 dark:border-slate-850">

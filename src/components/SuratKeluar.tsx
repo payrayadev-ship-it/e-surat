@@ -180,6 +180,8 @@ export default function SuratKeluar({
   const [signatoryName, setSignatoryName] = useState("Ir. Joko Sutrisno, M.T.");
   const [selectedTpl, setSelectedTpl] = useState("");
   const [letterCategory, setLetterCategory] = useState("Undangan");
+  const [validityPeriod, setValidityPeriod] = useState<"1_YEAR" | "6_MONTHS" | "2_YEARS" | "PERMANEN" | "CUSTOM">("1_YEAR");
+  const [customValidDate, setCustomValidDate] = useState("");
 
   // AI Prompt Stage
   const [isAiPanelOpen, setIsAiPanelOpen] = useState(false);
@@ -443,6 +445,26 @@ export default function SuratKeluar({
     const letterNoAuto = generateLetterNumber(indexSeq, companySetting, letterCategory);
     const verificationCode = `DOC-${new Date().toISOString().replace(/[-:T]/g, "").substring(0, 8)}-${String(indexSeq + 1).padStart(3, "0")}`;
 
+    let validUntilVal = "PERMANEN";
+    const today = new Date();
+    if (validityPeriod === "6_MONTHS") {
+      const d = new Date(today);
+      d.setMonth(d.getMonth() + 6);
+      validUntilVal = d.toISOString().split("T")[0];
+    } else if (validityPeriod === "1_YEAR") {
+      const d = new Date(today);
+      d.setFullYear(d.getFullYear() + 1);
+      validUntilVal = d.toISOString().split("T")[0];
+    } else if (validityPeriod === "2_YEARS") {
+      const d = new Date(today);
+      d.setFullYear(d.getFullYear() + 2);
+      validUntilVal = d.toISOString().split("T")[0];
+    } else if (validityPeriod === "CUSTOM") {
+      validUntilVal = customValidDate || new Date(today.getFullYear() + 1, today.getMonth(), today.getDate()).toISOString().split("T")[0];
+    } else {
+      validUntilVal = "PERMANEN";
+    }
+
     const newLetterData: Omit<LetterOut, "id" | "createdAt"> = {
       letterNumber: letterNoAuto,
       letterDate: new Date().toISOString().split("T")[0],
@@ -456,7 +478,8 @@ export default function SuratKeluar({
       signatureType: sigType,
       verificationCode: verificationCode,
       signatory: signatoryName || "Ir. Joko Sutrisno, M.T.",
-      draftBy: currentUser.name
+      draftBy: currentUser.name,
+      validUntil: validUntilVal
     };
 
     if (recipientEmail) {
@@ -1698,6 +1721,29 @@ export default function SuratKeluar({
                     onChange={(e) => setSignatoryName(e.target.value)}
                     className="w-full p-2 border border-slate-200 dark:border-slate-800 rounded bg-slate-50 dark:bg-slate-950 text-slate-800 dark:text-slate-100"
                   />
+                </div>
+
+                <div>
+                  <label className="block text-slate-500 font-semibold mb-1">Ketentuan Masa Berlaku Dokumen</label>
+                  <select
+                    value={validityPeriod}
+                    onChange={(e) => setValidityPeriod(e.target.value as any)}
+                    className="w-full p-2 border border-slate-200 dark:border-slate-800 rounded bg-slate-50 dark:bg-slate-950 text-slate-800 dark:text-slate-100 font-semibold"
+                  >
+                    <option value="1_YEAR">1 Tahun (Standar Dokumen Resmi)</option>
+                    <option value="6_MONTHS">6 Bulan (Dokumen Sementara / Lisensi)</option>
+                    <option value="2_YEARS">2 Tahun (Kontrak / MoU)</option>
+                    <option value="PERMANEN">Permanen / Selamanya (Tanpa Kedaluwarsa)</option>
+                    <option value="CUSTOM">Pilih Tanggal Khusus Kedaluwarsa...</option>
+                  </select>
+                  {validityPeriod === "CUSTOM" && (
+                    <input
+                      type="date"
+                      value={customValidDate}
+                      onChange={(e) => setCustomValidDate(e.target.value)}
+                      className="w-full mt-2 p-2 border border-slate-200 dark:border-slate-800 rounded bg-slate-50 dark:bg-slate-950 text-slate-800 dark:text-slate-100 font-mono text-xs"
+                    />
+                  )}
                 </div>
               </div>
 

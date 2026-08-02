@@ -1392,32 +1392,6 @@ Sistem Otomatis e-Office FORSDIG`;
             </div>
 
             <div className="p-6 md:p-8 space-y-6">
-              {/* Profile Selection Shortcut list */}
-              <div className="space-y-3">
-                <span className="block text-xs font-semibold text-slate-500">Pilih Role Akses Instan:</span>
-                <div className="grid grid-cols-2 sm:grid-cols-5 gap-2" id="shortcut-roles">
-                  {workspaceUsers.map((user) => (
-                    <button
-                      key={user.id}
-                      onClick={() => handleSelectMockProfile(user)}
-                      className="flex flex-col items-center p-2.5 bg-slate-50 dark:bg-slate-950 hover:bg-blue-50 dark:hover:bg-blue-950/20 border border-slate-150 dark:border-slate-850 rounded-xl text-center cursor-pointer group transition-all"
-                      title={user.name}
-                    >
-                      <img src={user.avatarUrl} alt={user.name} className="h-8 w-8 rounded-full object-cover mb-1 border group-hover:border-blue-500" />
-                      <span className="text-[10px] font-bold text-slate-800 dark:text-slate-200 truncate w-full">{user.name.split(",")[0]}</span>
-                      <span className="text-[8px] font-semibold text-blue-600 dark:text-blue-400 uppercase font-mono tracking-tight mt-0.5">{user.role}</span>
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              {/* Native credentials form */}
-              <div className="relative flex py-1 items-center">
-                <div className="flex-grow border-t border-slate-200 dark:border-slate-800"></div>
-                <span className="flex-shrink mx-4 text-xs font-bold text-slate-400 uppercase font-mono">Atau Masuk Kustom</span>
-                <div className="flex-grow border-t border-slate-200 dark:border-slate-800"></div>
-              </div>
-
               <form onSubmit={handleCustomLogin} className="space-y-4 text-xs md:text-sm">
                 <div>
                   <label className="block text-slate-500 font-semibold mb-1">Email Pegawai</label>

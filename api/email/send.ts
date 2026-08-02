@@ -31,9 +31,21 @@ export default async function handler(req: any, res: any) {
     return res.status(405).json({ error: "Method Not Allowed" });
   }
 
-  const { to, subject, body, attachmentName, letterData } = req.body;
+  const { to, subject, body, attachmentName, pdfData, pdfBase64, attachmentData, letterData } = req.body;
   if (!to || !subject) {
     return res.status(400).json({ error: "Recipient and subject are required" });
+  }
+
+  const rawPdf = pdfData || pdfBase64 || attachmentData;
+  const fileName = attachmentName || "Dokumen_Resmi_FGI.pdf";
+
+  const attachments: any[] = [];
+  if (rawPdf && typeof rawPdf === "string") {
+    const cleanBase64 = rawPdf.includes(",") ? rawPdf.split(",")[1] : rawPdf;
+    attachments.push({
+      filename: fileName,
+      content: Buffer.from(cleanBase64, "base64"),
+    });
   }
 
   const emailHtmlContent = `
@@ -224,6 +236,16 @@ export default async function handler(req: any, res: any) {
           </table>
         </div>
         ` : ''}
+        ${(rawPdf || attachmentName) ? `
+        <div style="margin-top: 20px; padding: 14px 18px; background-color: #f1f5f9; border: 1px dashed #cbd5e1; border-radius: 8px; font-family: sans-serif;">
+          <div style="font-size: 13px; color: #334155; font-weight: bold; margin-bottom: 4px;">
+            📎 Lampiran Berkas PDF: <span style="color: #1e3a8a; font-family: monospace;">${fileName}</span>
+          </div>
+          <div style="font-size: 11px; color: #047857; font-weight: bold;">
+            ✓ Dokumen fisik digital PDF resmi telah dilampirkan pada email ini.
+          </div>
+        </div>
+        ` : ''}
       </div>
       <div class="footer">
         <p class="footer-text">
@@ -243,12 +265,18 @@ export default async function handler(req: any, res: any) {
     
     if (resend) {
       console.log(`[RESEND ENGINE] Transmitting email to ${to} via Vercel official Resend SMTP Gateway...`);
-      const response = await resend.emails.send({
+      const emailPayload: any = {
         from: "FGI Office <noreply@foresyndoglobalindonesia.my.id>",
         to: to,
         subject: subject,
         html: emailHtmlContent,
-      });
+      };
+
+      if (attachments && attachments.length > 0) {
+        emailPayload.attachments = attachments;
+      }
+
+      const response = await resend.emails.send(emailPayload);
 
       return res.json({
         success: true,

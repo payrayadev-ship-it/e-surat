@@ -48,6 +48,25 @@ export function generateVerificationQR(code: string, width = 120, height = 120):
 }
 
 /**
+ * Generates a real PNG Data URL of a QR Code for embedding into PDF documents via jsPDF addImage.
+ */
+export async function generateVerificationQRDataURL(code: string, width = 300): Promise<string> {
+  try {
+    return await QRCode.toDataURL(code, {
+      width,
+      margin: 1,
+      color: {
+        dark: "#0f172a",
+        light: "#ffffff"
+      }
+    });
+  } catch (err) {
+    console.error("Error generating real QR Code Data URL for PDF:", err);
+    return "";
+  }
+}
+
+/**
  * Generates a high-resolution printable PNG badge for physical document verification.
  */
 export async function downloadVerificationQRPNG(

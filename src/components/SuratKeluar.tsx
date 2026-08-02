@@ -1,7 +1,7 @@
 import React, { useState, useRef, useEffect } from "react";
 import { Plus, Search, FileText, Bot, Send, Check, ShieldCheck, Signature, Sparkles, Printer, UserCheck, Eye, RefreshCw, X, Edit3, QrCode, Award, ShieldAlert, CheckCircle2, Download, LayoutTemplate, Link } from "lucide-react";
 import { LetterOut, UserRole, UserProfile, CompanySetting } from "../types";
-import { generateLetterNumber, injectTemplateVariables, generateVerificationQR, downloadVerificationQRPNG } from "../utils";
+import { generateLetterNumber, injectTemplateVariables, generateVerificationQR, downloadVerificationQRPNG, generateVerificationQRDataURL } from "../utils";
 import { jsPDF } from "jspdf";
 import RichTextEditor from "./RichTextEditor";
 import FgiLogo from "./FgiLogo";
@@ -223,15 +223,19 @@ export default function SuratKeluar({
 
   useEffect(() => {
     if (isPrintPreviewModalOpen && selectedLetter) {
-      try {
-        const doc = generateLetterPDFDoc(selectedLetter);
-        if (doc) {
-          const uri = doc.output("datauristring");
-          setPdfDataUri(uri);
+      let isMounted = true;
+      (async () => {
+        try {
+          const doc = await generateLetterPDFDoc(selectedLetter);
+          if (doc && isMounted) {
+            const uri = doc.output("datauristring");
+            setPdfDataUri(uri);
+          }
+        } catch (err) {
+          console.error("Failed to generate PDF for print preview:", err);
         }
-      } catch (err) {
-        console.error("Failed to generate PDF for print preview:", err);
-      }
+      })();
+      return () => { isMounted = false; };
     }
   }, [isPrintPreviewModalOpen, selectedLetter, companySetting]);
 
@@ -509,7 +513,7 @@ export default function SuratKeluar({
   };
 
   // Helper to generate the premium jsPDF document matching kop surat
-  const generateLetterPDFDoc = (letter: LetterOut): jsPDF | null => {
+  const generateLetterPDFDoc = async (letter: LetterOut): Promise<jsPDF | null> => {
     if (!letter) return null;
     
     const doc = new jsPDF({
@@ -811,38 +815,18 @@ export default function SuratKeluar({
     doc.setFontSize(7.5);
     doc.text("DOKUMEN TERVERIFIKASI SAH", leftMargin + 9.5, footerY + 3.2);
 
-    // Matrix QR Code Rendering loops
-    doc.setFillColor(15, 23, 42); // Pure deep charcoal QR code pixels
-    const isPosAnchor = (r: number, c: number) => {
-      if (r < 4 && c < 4) return true;
-      if (r < 4 && c >= size - 4) return true;
-      if (r >= size - 4 && c < 4) return true;
-      return false;
-    };
-    const isPosAnchorBorder = (r: number, c: number) => {
-      if ((r === 1 || r === 2) && (c === 1 || c === 2)) return false;
-      if ((r === 1 || r === 2) && (c === size - 2 || c === size - 3)) return false;
-      if ((r === size - 2 || r === size - 3) && (c === 1 || c === 2)) return false;
-      return isPosAnchor(r, c);
-    };
-
+    // Real scannable QR Code rendering
     const startQRX = leftMargin + 4;
     const startQRY = footerY + 6.5;
 
-    for (let r = 0; r < size; r++) {
-      for (let c = 0; c < size; c++) {
-        let active = false;
-        if (isPosAnchor(r, c)) {
-          active = isPosAnchorBorder(r, c);
-        } else {
-          const cellHash = Math.abs(Math.sin(hash + r * 19 + c * 33));
-          active = cellHash > 0.44;
-        }
-
-        if (active) {
-          doc.rect(startQRX + c * cellWidth, startQRY + r * cellWidth, cellWidth - 0.22, cellWidth - 0.22, "F");
-        }
+    const qrPayload = `${window.location.origin}${window.location.pathname}?verify=${encodeURIComponent(letter.verificationCode || letter.id)}`;
+    try {
+      const qrDataUrl = await generateVerificationQRDataURL(qrPayload, 300);
+      if (qrDataUrl) {
+        doc.addImage(qrDataUrl, "PNG", startQRX, startQRY, qrBoxSize, qrBoxSize);
       }
+    } catch (qrErr) {
+      console.error("Gagal menambahkan QR Code ke PDF:", qrErr);
     }
 
     // QR Code Metadata descriptions
@@ -911,28 +895,14 @@ export default function SuratKeluar({
       doc.setLineWidth(0.25);
       doc.roundedRect(signX, footerY + 5, 44, 16, 1, 1, "FD");
 
-      // Draw mini QR Code pixels inside the signature bounding box (left side of box)
-      let sigHash = 0;
-      for (let i = 0; i < sigCode.length; i++) {
-        sigHash = sigCode.charCodeAt(i) + ((sigHash << 5) - sigHash);
-      }
-      const qrMatrixSize = 11;
-      const miniCellWidth = 10 / qrMatrixSize;
-      
-      doc.setFillColor(29, 78, 216); // Nice official blue color for signature QR code
-      for (let r = 0; r < qrMatrixSize; r++) {
-        for (let c = 0; c < qrMatrixSize; c++) {
-          const isAnchor = (r < 3 && c < 3) || (r < 3 && c >= qrMatrixSize - 3) || (r >= qrMatrixSize - 3 && c < 3);
-          let pixelActive = false;
-          if (isAnchor) {
-            pixelActive = (r === 0 || r === 2 || c === 0 || c === 2) || (r === qrMatrixSize - 1 || r === qrMatrixSize - 3 || c === qrMatrixSize - 1 || c === qrMatrixSize - 3);
-          } else {
-            pixelActive = Math.abs(Math.sin(sigHash + r * 13 + c * 27)) > 0.45;
-          }
-          if (pixelActive) {
-            doc.rect(signX + 2 + c * miniCellWidth, footerY + 8 + r * miniCellWidth, miniCellWidth - 0.1, miniCellWidth - 0.1, "F");
-          }
+      // Draw real mini TTE QR Code image inside signature bounding box
+      try {
+        const tteQrDataUrl = await generateVerificationQRDataURL(sigCode, 200);
+        if (tteQrDataUrl) {
+          doc.addImage(tteQrDataUrl, "PNG", signX + 1.5, footerY + 7, 12, 12);
         }
+      } catch (tteErr) {
+        console.error("Gagal menggambar TTE QR code di PDF:", tteErr);
       }
 
       // Add descriptive labels next to the QR code inside the box
@@ -997,8 +967,8 @@ export default function SuratKeluar({
   };
 
   // Export letter to highly detailed PDF matching kop surat
-  const handleExportPDF = (letter: LetterOut) => {
-    const doc = generateLetterPDFDoc(letter);
+  const handleExportPDF = async (letter: LetterOut) => {
+    const doc = await generateLetterPDFDoc(letter);
     if (doc) {
       doc.save(`${letter.verificationCode}_LettersOut.pdf`);
     }
@@ -1224,13 +1194,13 @@ export default function SuratKeluar({
                     {/* DISPATCH/SEND TO RECIPIENT */}
                     {(selectedLetter.status === "Approved Direktur" || (selectedLetter.status === "Approved Manager" && currentRole === "Super Admin")) && (
                       <button 
-                        onClick={() => {
+                        onClick={async () => {
                           onUpdateStatus(selectedLetter.id, "Terkirim", "Sent to recipient via Resend official correspondence channel.");
                           setSelectedLetter({...selectedLetter, status: "Terkirim"});
-                                            // Generate PDF base64 data for attachment
+                          // Generate PDF base64 data for attachment
                           let pdfBase64 = "";
                           try {
-                            const doc = generateLetterPDFDoc(selectedLetter);
+                            const doc = await generateLetterPDFDoc(selectedLetter);
                             if (doc) {
                               pdfBase64 = doc.output("datauristring").split(",")[1];
                             }
@@ -2133,12 +2103,23 @@ export default function SuratKeluar({
                 <Send className="h-4 w-4 text-indigo-400 shrink-0" />
                 <span>Pratinjau Email Resmi (Resend Template Review)</span>
               </span>
-              <button 
-                onClick={() => setIsEmailPreviewModalOpen(false)} 
-                className="text-slate-400 hover:text-white transition-colors cursor-pointer"
-              >
-                <X className="h-5 w-5" />
-              </button>
+              <div className="flex items-center space-x-2">
+                <button
+                  type="button"
+                  onClick={() => setIsPrintPreviewModalOpen(true)}
+                  className="flex items-center space-x-1.5 bg-blue-900 hover:bg-blue-800 text-white text-xs font-bold py-1.5 px-3 rounded-lg shadow-sm transition-all cursor-pointer"
+                  title="Buka Modal Pratinjau Dokumen PDF"
+                >
+                  <Eye className="h-3.5 w-3.5" />
+                  <span className="hidden sm:inline">Pratinjau Dokumen PDF</span>
+                </button>
+                <button 
+                  onClick={() => setIsEmailPreviewModalOpen(false)} 
+                  className="text-slate-400 hover:text-white transition-colors cursor-pointer p-1 rounded-lg hover:bg-slate-800"
+                >
+                  <X className="h-5 w-5" />
+                </button>
+              </div>
             </div>
 
             {/* Email client shell wrapper */}
@@ -2147,11 +2128,21 @@ export default function SuratKeluar({
               {/* Mail client toolbar & headers */}
               <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-4 shadow-sm space-y-2.5">
                 {/* Simulated browser controls */}
-                <div className="flex items-center space-x-1.5 pb-2 border-b border-slate-100 dark:border-slate-800/60">
-                  <span className="w-2.5 h-2.5 rounded-full bg-red-400" />
-                  <span className="w-2.5 h-2.5 rounded-full bg-yellow-400" />
-                  <span className="w-2.5 h-2.5 rounded-full bg-green-400" />
-                  <span className="text-[10px] text-slate-400 font-mono pl-2 font-medium">resend-gateway-secure-ssl.v1</span>
+                <div className="flex items-center justify-between pb-2 border-b border-slate-100 dark:border-slate-800/60">
+                  <div className="flex items-center space-x-1.5">
+                    <span className="w-2.5 h-2.5 rounded-full bg-red-400" />
+                    <span className="w-2.5 h-2.5 rounded-full bg-yellow-400" />
+                    <span className="w-2.5 h-2.5 rounded-full bg-green-400" />
+                    <span className="text-[10px] text-slate-400 font-mono pl-2 font-medium">resend-gateway-secure-ssl.v1</span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setIsPrintPreviewModalOpen(true)}
+                    className="text-[11px] font-bold text-blue-600 dark:text-blue-400 hover:underline flex items-center space-x-1 cursor-pointer"
+                  >
+                    <FileText className="h-3.5 w-3.5" />
+                    <span>Modal PDF Dokumen</span>
+                  </button>
                 </div>
 
                 <div className="space-y-1.5 text-xs">
@@ -2199,18 +2190,30 @@ export default function SuratKeluar({
                     dangerouslySetInnerHTML={{ __html: getSubstitutedContent(selectedLetter.content) }}
                   />
 
-                  {/* Attachment indicator block */}
-                  <div className="p-3 bg-slate-50 border border-slate-150 rounded-lg flex items-center justify-between text-xs">
-                    <div className="flex items-center space-x-2.5">
-                      <FileText className="h-4.5 w-4.5 text-blue-600" />
+                  {/* Attachment indicator block with PDF Modal Trigger */}
+                  <div className="p-3.5 bg-slate-50 border border-slate-200 rounded-xl flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs">
+                    <div className="flex items-center space-x-3">
+                      <div className="p-2 bg-blue-100 text-blue-800 rounded-lg">
+                        <FileText className="h-5 w-5" />
+                      </div>
                       <div>
-                        <span className="font-bold text-slate-800">Letter_{selectedLetter.verificationCode}.pdf</span>
-                        <span className="text-[10px] text-slate-400 block mt-0.5">Automated Electronic Letter PDF Attachment</span>
+                        <span className="font-bold text-slate-800 text-xs block">Letter_{selectedLetter.verificationCode}.pdf</span>
+                        <span className="text-[10px] text-slate-500 block mt-0.5">Berkas Fisik Digital TTE Resmi (Lampiran Otomatis)</span>
                       </div>
                     </div>
-                    <span className="text-[9px] font-bold py-0.5 px-2 bg-emerald-50 text-emerald-700 border border-emerald-200 rounded shrink-0 uppercase tracking-wide">
-                      Auto Attached
-                    </span>
+                    <div className="flex items-center space-x-2 shrink-0">
+                      <span className="text-[9px] font-bold py-1 px-2 bg-emerald-50 text-emerald-700 border border-emerald-200 rounded uppercase tracking-wide">
+                        Auto Attached
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => setIsPrintPreviewModalOpen(true)}
+                        className="flex items-center space-x-1.5 px-3 py-1.5 bg-blue-900 hover:bg-blue-800 text-white font-bold text-xs rounded-lg shadow-sm transition-all cursor-pointer"
+                      >
+                        <Eye className="h-3.5 w-3.5" />
+                        <span>Pratinjau Modal PDF</span>
+                      </button>
+                    </div>
                   </div>
 
                   {/* Credentials Sheet Metadata (Just like server.ts layout) */}
@@ -2236,6 +2239,17 @@ export default function SuratKeluar({
                       <div className="py-2 flex justify-between">
                         <span className="text-slate-505">Kode Verifikasi TTE</span>
                         <span className="font-mono font-bold text-slate-850 bg-slate-150 px-1.5 py-0.5 rounded text-[10px]">{selectedLetter.verificationCode}</span>
+                      </div>
+                      <div className="py-2 flex justify-between items-center">
+                        <span className="text-slate-505">Modal Pratinjau PDF</span>
+                        <button
+                          type="button"
+                          onClick={() => setIsPrintPreviewModalOpen(true)}
+                          className="font-bold text-blue-700 hover:text-blue-900 text-[11px] underline flex items-center space-x-1 cursor-pointer"
+                        >
+                          <FileText className="h-3.5 w-3.5 inline mr-0.5" />
+                          <span>Buka Modal PDF ({selectedLetter.verificationCode})</span>
+                        </button>
                       </div>
                       <div className="py-2 flex justify-between">
                         <span className="text-slate-400">Status Dokumen</span>
@@ -2272,12 +2286,22 @@ export default function SuratKeluar({
             {/* Footer Buttons */}
             <div className="p-4 bg-slate-100 dark:bg-slate-950 border-t border-slate-200 dark:border-slate-850 flex justify-between items-center">
               <span className="text-[10px] font-semibold text-slate-400">FGI Mail Preview Engine v2</span>
-              <button
-                onClick={() => setIsEmailPreviewModalOpen(false)}
-                className="bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold py-2 px-5 rounded-lg shadow-md transition-all cursor-pointer"
-              >
-                Kembali ke Dokumen
-              </button>
+              <div className="flex items-center space-x-2">
+                <button
+                  type="button"
+                  onClick={() => setIsPrintPreviewModalOpen(true)}
+                  className="bg-blue-900 hover:bg-blue-800 text-white text-xs font-bold py-2 px-4 rounded-lg shadow-md transition-all flex items-center space-x-1.5 cursor-pointer"
+                >
+                  <Eye className="h-3.5 w-3.5" />
+                  <span>Modal Pratinjau Dokumen PDF</span>
+                </button>
+                <button
+                  onClick={() => setIsEmailPreviewModalOpen(false)}
+                  className="bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold py-2 px-5 rounded-lg shadow-md transition-all cursor-pointer"
+                >
+                  Kembali ke Dokumen
+                </button>
+              </div>
             </div>
           </div>
         </div>
@@ -2285,7 +2309,7 @@ export default function SuratKeluar({
 
       {/* MODAL: Print Preview & Corporate Branding Verification */}
       {isPrintPreviewModalOpen && selectedLetter && (
-        <div className="fixed inset-0 bg-black/80 backdrop-blur-md flex justify-center items-center z-50 p-2 sm:p-4 overflow-y-auto">
+        <div className="fixed inset-0 bg-black/80 backdrop-blur-md flex justify-center items-center z-[60] p-2 sm:p-4 overflow-y-auto">
           <div className="bg-slate-100 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl shadow-2xl w-full max-w-5xl overflow-hidden animate-in fade-in zoom-in-95 duration-200 flex flex-col h-[95vh] sm:h-[90vh]">
             
             {/* Header */}
@@ -2361,8 +2385,8 @@ export default function SuratKeluar({
                 </button>
 
                 <button
-                  onClick={() => {
-                    const doc = generateLetterPDFDoc(selectedLetter);
+                  onClick={async () => {
+                    const doc = await generateLetterPDFDoc(selectedLetter);
                     if (doc) {
                       doc.save(`Draft_${selectedLetter.verificationCode}.pdf`);
                     }
@@ -2374,9 +2398,9 @@ export default function SuratKeluar({
                 </button>
 
                 <button
-                  onClick={() => {
+                  onClick={async () => {
                     try {
-                      const doc = generateLetterPDFDoc(selectedLetter);
+                      const doc = await generateLetterPDFDoc(selectedLetter);
                       if (doc) {
                         const blobUrl = doc.output("bloburl");
                         const printWindow = window.open(blobUrl, "_blank");

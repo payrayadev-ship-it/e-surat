@@ -576,10 +576,13 @@ Harap pastikan output Anda mematuhi skema JSON di atas dengan sempurna. Jangan m
 
   // E-mail Outgoing Logs Handler / Resend Dispatch Route
   app.post("/api/email/send", async (req, res) => {
-    const { to, subject, body, attachmentName, pdfData, letterData } = req.body;
+    const { to, subject, body, attachmentName, pdfData, pdfBase64, attachmentData, letterData } = req.body;
     if (!to || !subject) {
       return res.status(400).json({ error: "Recipient and subject are required" });
     }
+
+    const rawPdf = pdfData || pdfBase64 || attachmentData;
+    const fileName = attachmentName || "Dokumen_Resmi_FGI.pdf";
 
     // Build modern responsive corporate email template (HTML)
     const emailHtmlContent = `
@@ -770,6 +773,16 @@ Harap pastikan output Anda mematuhi skema JSON di atas dengan sempurna. Jangan m
           </table>
         </div>
         ` : ''}
+        ${(rawPdf || attachmentName) ? `
+        <div style="margin-top: 20px; padding: 14px 18px; background-color: #f1f5f9; border: 1px dashed #cbd5e1; border-radius: 8px; font-family: sans-serif;">
+          <div style="font-size: 13px; color: #334155; font-weight: bold; margin-bottom: 4px;">
+            📎 Lampiran Berkas PDF: <span style="color: #1e3a8a; font-family: monospace;">${fileName}</span>
+          </div>
+          <div style="font-size: 11px; color: #047857; font-weight: bold;">
+            ✓ Dokumen fisik digital PDF resmi telah dilampirkan pada email ini.
+          </div>
+        </div>
+        ` : ''}
       </div>
       <div class="footer">
         <p class="footer-text">
@@ -791,10 +804,11 @@ Harap pastikan output Anda mematuhi skema JSON di atas dengan sempurna. Jangan m
         console.log(`[RESEND ENGINE] Transmitting email to ${to} via official Resend SMTP Gateway...`);
         
         const attachments = [];
-        if (pdfData && attachmentName) {
+        if (rawPdf && typeof rawPdf === "string") {
+          const cleanBase64 = rawPdf.includes(",") ? rawPdf.split(",")[1] : rawPdf;
           attachments.push({
-            filename: attachmentName,
-            content: Buffer.from(pdfData, "base64"),
+            filename: fileName,
+            content: Buffer.from(cleanBase64, "base64"),
           });
         }
 

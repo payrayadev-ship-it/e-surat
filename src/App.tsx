@@ -16,7 +16,7 @@ import {
 import { 
   seedLettersIn, seedLettersOut, seedDispositions, 
   seedMemos, seedMeetings, seedAuditLogs,
-  generateVerificationQR, downloadVerificationQRPNG
+  generateVerificationQR, downloadVerificationQRPNG, generateVerificationQRDataURL
 } from "./utils";
 
 import Dashboard from "./components/Dashboard";
@@ -184,8 +184,8 @@ export default function App() {
     }
   };
 
-  const handleGlobalExportPDF = (letter: any, type: "in" | "out") => {
-    if (!letter) return;
+  const generateGlobalPDFDoc = async (letter: any, type: "in" | "out"): Promise<jsPDF | null> => {
+    if (!letter) return null;
     
     const doc = new jsPDF({
       orientation: "portrait",
@@ -540,44 +540,16 @@ export default function App() {
       doc.setLineWidth(0.3);
       doc.roundedRect(20, footerY - 2, 78, qrBoxSize + 8, 2, 2, "FD");
 
-      // Simple QR drawer pattern
       const qrCodeVal = letter.verificationCode || `TTE-${Date.now()}`;
-      let hash = 0;
-      for (let i = 0; i < qrCodeVal.length; i++) {
-        hash = qrCodeVal.charCodeAt(i) + ((hash << 5) - hash);
-      }
-      const qrSize = 15;
-      const cellWidth = qrBoxSize / qrSize;
+      const qrPayload = `${window.location.origin}${window.location.pathname}?verify=${encodeURIComponent(qrCodeVal)}`;
 
-      doc.setFillColor(30, 41, 142);
-      for (let r = 0; r < qrSize; r++) {
-        for (let c = 0; c < qrSize; c++) {
-          let active = false;
-          // check anchors
-          const isPosAnchor = (row: number, col: number) => {
-            if (row < 4 && col < 4) return true;
-            if (row < 4 && col >= qrSize - 4) return true;
-            if (row >= qrSize - 4 && col < 4) return true;
-            return false;
-          };
-          const isPosAnchorBorder = (row: number, col: number) => {
-            if ((row === 1 || row === 2) && (col === 1 || col === 2)) return false;
-            if ((row === 1 || row === 2) && (col === qrSize - 2 || col === qrSize - 3)) return false;
-            if ((row === qrSize - 2 || row === qrSize - 3) && (col === 1 || col === 2)) return false;
-            return isPosAnchor(row, col);
-          };
-
-          if (isPosAnchor(r, c)) {
-            active = isPosAnchorBorder(r, c);
-          } else {
-            const cellHash = Math.abs(Math.sin(hash + r * 17 + c * 31));
-            active = cellHash > 0.45;
-          }
-
-          if (active) {
-            doc.rect(24 + (c * cellWidth), footerY + (r * cellWidth) + 1.5, cellWidth - 0.25, cellWidth - 0.25, "F");
-          }
+      try {
+        const qrDataUrl = await generateVerificationQRDataURL(qrPayload, 300);
+        if (qrDataUrl) {
+          doc.addImage(qrDataUrl, "PNG", 24, footerY + 1.5, qrBoxSize, qrBoxSize);
         }
+      } catch (err) {
+        console.error("Gagal menambahkan QR code di handleGlobalExportPDF:", err);
       }
 
       // Text credentials
@@ -624,8 +596,15 @@ export default function App() {
       doc.text("Direktur Penandatangan TTE", 120, footerY + 23.5);
     }
 
-    addAuditLog(`Mengunduh berkas surat [No: ${letter.letterNumber}] dari Quick View Global Search`, "Cetak Surat");
-    doc.save(`FGI_Surat_${(letter.letterNumber || "doc").replace(/[^a-zA-Z0-9]/g, "_")}.pdf`);
+    return doc;
+  };
+
+  const handleGlobalExportPDF = async (letter: any, type: "in" | "out") => {
+    const doc = await generateGlobalPDFDoc(letter, type);
+    if (doc) {
+      addAuditLog(`Mengunduh berkas surat [No: ${letter.letterNumber}] dari Quick View Global Search`, "Cetak Surat");
+      doc.save(`FGI_Surat_${(letter.letterNumber || "doc").replace(/[^a-zA-Z0-9]/g, "_")}.pdf`);
+    }
   };
 
   // Form states login
@@ -1045,6 +1024,22 @@ Mohon segera mengakses Portal e-Office FORSDIG untuk memeriksa lampiran berkas a
 Hormat kami,
 Sistem Otomatis e-Office FORSDIG`;
 
+      // Generate PDF data for disposition email attachment
+      let pdfBase64 = "";
+      if (selectedLetter) {
+        try {
+          const doc = await generateGlobalPDFDoc(selectedLetter, "in");
+          if (doc) {
+            pdfBase64 = doc.output("datauristring").split(",")[1];
+          }
+        } catch (pdfErr) {
+          console.error("Failed to generate PDF for disposition email:", pdfErr);
+        }
+      }
+
+      const letterNumClean = (selectedLetter?.letterNumber || "Disposisi").replace(/[^a-zA-Z0-9]/g, "_");
+      const finalAttachmentName = `Disposisi_${letterNumClean}.pdf`;
+
       fetch("/api/email/send", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -1052,6 +1047,9 @@ Sistem Otomatis e-Office FORSDIG`;
           to: recipient.email,
           subject: emailSubject,
           body: emailBody,
+          attachmentName: finalAttachmentName,
+          pdfData: pdfBase64 || undefined,
+          pdfBase64: pdfBase64 || undefined,
           letterData: {
             letterNumber: selectedLetter?.letterNumber || "-",
             letterDate: selectedLetter?.letterDate || "-",
@@ -2334,7 +2332,7 @@ Sistem Otomatis e-Office FORSDIG`;
                   </button>
 
                   <button
-                    onClick={() => handleGlobalExportPDF(selectedSearchLetter.letter, selectedSearchLetter.type)}
+                    onClick={async () => await handleGlobalExportPDF(selectedSearchLetter.letter, selectedSearchLetter.type)}
                     className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs rounded-xl transition-all flex items-center gap-1.5 cursor-pointer shadow-sm"
                   >
                     <FileDown className="h-3.5 w-3.5" />

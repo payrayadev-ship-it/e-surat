@@ -1,7 +1,7 @@
 import React, { useState, useRef, useEffect } from "react";
-import { Plus, Search, FileText, Bot, Send, Check, ShieldCheck, Signature, Sparkles, Printer, UserCheck, Eye, RefreshCw, X, Edit3, QrCode, Award, ShieldAlert, CheckCircle2, Download, LayoutTemplate, Link } from "lucide-react";
+import { Plus, Search, FileText, Bot, Send, Check, ShieldCheck, Signature, Sparkles, Printer, UserCheck, Eye, RefreshCw, X, Edit3, QrCode, Award, ShieldAlert, CheckCircle2, Download, LayoutTemplate, Link, AlertTriangle, Calendar } from "lucide-react";
 import { LetterOut, UserRole, UserProfile, CompanySetting } from "../types";
-import { generateLetterNumber, injectTemplateVariables, generateVerificationQR, downloadVerificationQRPNG, generateVerificationQRDataURL } from "../utils";
+import { generateLetterNumber, injectTemplateVariables, generateVerificationQR, downloadVerificationQRPNG, generateVerificationQRDataURL, getDocumentValidityStatus } from "../utils";
 import { jsPDF } from "jspdf";
 import RichTextEditor from "./RichTextEditor";
 import FgiLogo from "./FgiLogo";
@@ -641,13 +641,45 @@ export default function SuratKeluar({
     let currentY = drawLetterhead(1);
     let currentPage = 1;
 
-    // --- 4. Date on the Right ---
+    // --- 4. Date and Document Validity Badge on the Right ---
     const metaY = currentY + 5;
     doc.setTextColor(15, 23, 42); // Dark Charcoal
     doc.setFont("helvetica", "normal");
     doc.setFontSize(10);
     const dateOutput = `Jakarta, ${letter.letterDate ? formatDateIndo(letter.letterDate) : getCurrentFormattedDate()}`;
     doc.text(dateOutput, rightMargin, metaY, { align: "right" });
+
+    // Draw visual document validity badge on top-right of PDF
+    const valInfoDoc = getDocumentValidityStatus(letter.letterDate, letter.validUntil);
+    const valBadgeY = metaY + 4.5;
+    if (valInfoDoc.isPermanent) {
+      doc.setFillColor(240, 253, 244);
+      doc.setDrawColor(16, 185, 129);
+      doc.setLineWidth(0.3);
+      doc.roundedRect(rightMargin - 52, valBadgeY, 52, 6, 1, 1, "FD");
+      doc.setTextColor(5, 150, 105);
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(7);
+      doc.text("STATUS: BERLAKU PERMANEN", rightMargin - 26, valBadgeY + 4.2, { align: "center" });
+    } else if (valInfoDoc.isValid) {
+      doc.setFillColor(240, 253, 244);
+      doc.setDrawColor(16, 185, 129);
+      doc.setLineWidth(0.3);
+      doc.roundedRect(rightMargin - 62, valBadgeY, 62, 6, 1, 1, "FD");
+      doc.setTextColor(5, 150, 105);
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(7);
+      doc.text(`STATUS: AKTIF (s/d ${valInfoDoc.validUntilFormatted})`, rightMargin - 31, valBadgeY + 4.2, { align: "center" });
+    } else {
+      doc.setFillColor(254, 242, 242);
+      doc.setDrawColor(225, 29, 72);
+      doc.setLineWidth(0.3);
+      doc.roundedRect(rightMargin - 66, valBadgeY, 66, 6, 1, 1, "FD");
+      doc.setTextColor(225, 29, 72);
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(7);
+      doc.text(`STATUS: KEDALUWARSA (${valInfoDoc.validUntilFormatted})`, rightMargin - 33, valBadgeY + 4.2, { align: "center" });
+    }
 
     // --- 5. Letter Metadata Group (Left) with Clean Tabular Columns ---
     const labelX = leftMargin;
@@ -2028,6 +2060,47 @@ export default function SuratKeluar({
                 </div>
               </div>
 
+              {/* Visual Validity Status Badge Card */}
+              {(() => {
+                const valInfo = getDocumentValidityStatus(selectedLetter.letterDate, selectedLetter.validUntil);
+                return (
+                  <div className={`p-4 rounded-xl border-2 flex items-center justify-between gap-3 shadow-xs ${
+                    valInfo.isValid
+                      ? "bg-emerald-50/90 dark:bg-emerald-950/40 border-emerald-500/60 text-emerald-900 dark:text-emerald-200"
+                      : "bg-rose-50/90 dark:bg-rose-950/40 border-rose-500/70 text-rose-900 dark:text-rose-200"
+                  }`}>
+                    <div className="flex items-center space-x-3">
+                      <div className={`p-2 rounded-xl shrink-0 font-bold ${
+                        valInfo.isValid 
+                          ? "bg-emerald-200/80 dark:bg-emerald-800/80 text-emerald-900 dark:text-emerald-100" 
+                          : "bg-rose-200/80 dark:bg-rose-800/80 text-rose-900 dark:text-rose-100"
+                      }`}>
+                        {valInfo.isValid ? <CheckCircle2 className="h-6 w-6 text-emerald-700 dark:text-emerald-300" /> : <AlertTriangle className="h-6 w-6 text-rose-700 dark:text-rose-300" />}
+                      </div>
+                      <div>
+                        <div className="flex items-center gap-2">
+                          <span className="font-extrabold text-xs uppercase tracking-wider">Status Masa Berlaku:</span>
+                          <span className={`text-[10px] font-mono px-2 py-0.5 rounded-md font-extrabold uppercase ${
+                            valInfo.isValid
+                              ? "bg-emerald-300 dark:bg-emerald-700 text-emerald-950 dark:text-emerald-100"
+                              : "bg-rose-300 dark:bg-rose-700 text-rose-950 dark:text-rose-100"
+                          }`}>
+                            {valInfo.statusBadgeText}
+                          </span>
+                        </div>
+                        <p className="text-[11px] mt-0.5 text-slate-700 dark:text-slate-300 font-medium">
+                          {valInfo.statusDetailText}
+                        </p>
+                      </div>
+                    </div>
+                    <div className="text-right shrink-0 font-mono">
+                      <span className="text-[9px] text-slate-400 dark:text-slate-500 font-bold uppercase block">Batas Berlaku</span>
+                      <span className="font-extrabold text-xs">{valInfo.validUntilFormatted}</span>
+                    </div>
+                  </div>
+                );
+              })()}
+
               {/* Document Identity/Metadata Sheet */}
               <div className="border border-slate-200 dark:border-slate-800 rounded-xl overflow-hidden shadow-sm text-xs">
                 <div className="p-3 bg-slate-50/80 dark:bg-slate-950/40 border-b border-slate-200 dark:border-slate-800 font-bold text-slate-700 dark:text-slate-300">
@@ -2041,6 +2114,23 @@ export default function SuratKeluar({
                   <div className="p-3 grid grid-cols-3 gap-2">
                     <span className="text-slate-400 font-medium">Perihal Dokumen</span>
                     <span className="col-span-2 font-semibold text-slate-800 dark:text-slate-200">{selectedLetter.subject}</span>
+                  </div>
+                  <div className="p-3 grid grid-cols-3 gap-2 items-center">
+                    <span className="text-slate-400 font-medium">Status Masa Berlaku</span>
+                    <span className="col-span-2">
+                      {(() => {
+                        const valInfo = getDocumentValidityStatus(selectedLetter.letterDate, selectedLetter.validUntil);
+                        return (
+                          <span className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded font-extrabold text-[10px] font-mono uppercase ${
+                            valInfo.isValid 
+                              ? "bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300"
+                              : "bg-rose-100 text-rose-800 dark:bg-rose-950 dark:text-rose-300"
+                          }`}>
+                            {valInfo.isValid ? "✓" : "⚠"} {valInfo.statusBadgeText} ({valInfo.validUntilFormatted})
+                          </span>
+                        );
+                      })()}
+                    </span>
                   </div>
                   <div className="p-3 grid grid-cols-3 gap-2">
                     <span className="text-slate-400 font-medium font-sans">Penerima & Instansi</span>
@@ -2526,8 +2616,22 @@ export default function SuratKeluar({
                         <span className="text-slate-400 font-bold text-center mt-1">:</span>
                         <span className="text-slate-900 font-bold mt-1 text-wrap break-words">{selectedLetter.subject}</span>
                       </div>
-                      <div className="shrink-0 text-right text-slate-800 font-medium">
+                      <div className="shrink-0 text-right text-slate-800 font-medium space-y-1.5">
                         <p>Jakarta, {selectedLetter.letterDate ? formatDateIndo(selectedLetter.letterDate) : getCurrentFormattedDate()}</p>
+                        {(() => {
+                          const valInfo = getDocumentValidityStatus(selectedLetter.letterDate, selectedLetter.validUntil);
+                          return (
+                            <div className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md border text-[10px] font-bold font-mono shadow-2xs ${
+                              valInfo.isValid
+                                ? "bg-emerald-50 text-emerald-800 border-emerald-300"
+                                : "bg-rose-50 text-rose-800 border-rose-300"
+                            }`}>
+                              {valInfo.isValid ? <CheckCircle2 className="h-3 w-3 text-emerald-600 shrink-0" /> : <AlertTriangle className="h-3 w-3 text-rose-600 shrink-0" />}
+                              <span>{valInfo.statusBadgeText}</span>
+                              <span className="text-[9px] font-normal opacity-80">({valInfo.validUntilFormatted})</span>
+                            </div>
+                          );
+                        })()}
                       </div>
                     </div>
 
@@ -2679,6 +2783,21 @@ export default function SuratKeluar({
                     <div className="flex justify-between py-1 border-b border-dashed border-slate-150 dark:border-slate-800">
                       <span className="text-slate-400">TTE Sign:</span>
                       <span className="font-bold text-emerald-600 dark:text-emerald-400">{selectedLetter.signatureEnabled ? "AKTIF" : "NONAKTIF"}</span>
+                    </div>
+                    <div className="flex justify-between items-center py-1 border-b border-dashed border-slate-150 dark:border-slate-800">
+                      <span className="text-slate-400">Masa Berlaku:</span>
+                      {(() => {
+                        const valInfo = getDocumentValidityStatus(selectedLetter.letterDate, selectedLetter.validUntil);
+                        return (
+                          <span className={`font-bold px-1.5 py-0.5 rounded text-[10px] ${
+                            valInfo.isValid 
+                              ? "bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300"
+                              : "bg-rose-100 text-rose-800 dark:bg-rose-950 dark:text-rose-300"
+                          }`}>
+                            {valInfo.statusBadgeText}
+                          </span>
+                        );
+                      })()}
                     </div>
                   </div>
                 </div>

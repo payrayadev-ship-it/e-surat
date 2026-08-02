@@ -576,47 +576,49 @@ export default function VerificationScanner({
             </form>
           )}
 
-          {/* Rapid demo shortcuts section */}
-          <div className="pt-4 border-t border-slate-100 dark:border-slate-800/80 space-y-2">
-            <h5 className="text-[10px] font-bold text-slate-400 uppercase tracking-wide flex items-center gap-1">
-              <Sparkles className="h-3 w-3 text-amber-500" />
-              <span>Demo Cepat (Sertifikat Berkas Tersedia)</span>
-            </h5>
-            <div className="max-h-[140px] overflow-y-auto space-y-1.5 pr-1 text-[11px]" id="demo-verify-links">
-              {lettersOut.length === 0 ? (
-                <p className="text-slate-400 text-xs italic">Belum ada surat keluar terdaftar.</p>
-              ) : (
-                lettersOut.map((l) => {
-                  const val = getDocumentValidityStatus(l.letterDate, l.validUntil);
-                  return (
-                    <button
-                      key={l.id}
-                      onClick={() => processVerificationCode(l.verificationCode)}
-                      className="w-full text-left p-2 bg-slate-50 hover:bg-slate-100 dark:bg-slate-950 dark:hover:bg-slate-850 rounded border border-slate-150 dark:border-slate-800/60 font-medium text-slate-650 dark:text-slate-400 flex items-center justify-between transition-colors group cursor-pointer"
-                    >
-                      <div className="truncate flex-1 pr-2">
-                        <div className="flex items-center gap-1.5">
-                          <p className="font-bold text-slate-800 dark:text-slate-200 truncate">{l.subject}</p>
-                          <span className={`text-[8px] px-1.5 py-0.2 rounded font-bold shrink-0 ${
-                            val.isValid 
-                              ? "bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300" 
-                              : "bg-rose-100 text-rose-800 dark:bg-rose-950 dark:text-rose-300"
-                          }`}>
-                            {val.isValid ? "AKTIF" : "KEDALUWARSA"}
-                          </span>
+          {/* Rapid demo shortcuts section (Hidden in public mode to keep external scanner strict and clean) */}
+          {!isPublicMode && (
+            <div className="pt-4 border-t border-slate-100 dark:border-slate-800/80 space-y-2">
+              <h5 className="text-[10px] font-bold text-slate-400 uppercase tracking-wide flex items-center gap-1">
+                <Sparkles className="h-3 w-3 text-amber-500" />
+                <span>Demo Cepat (Sertifikat Berkas Tersedia)</span>
+              </h5>
+              <div className="max-h-[140px] overflow-y-auto space-y-1.5 pr-1 text-[11px]" id="demo-verify-links">
+                {lettersOut.length === 0 ? (
+                  <p className="text-slate-400 text-xs italic">Belum ada surat keluar terdaftar.</p>
+                ) : (
+                  lettersOut.map((l) => {
+                    const val = getDocumentValidityStatus(l.letterDate, l.validUntil);
+                    return (
+                      <button
+                        key={l.id}
+                        onClick={() => processVerificationCode(l.verificationCode)}
+                        className="w-full text-left p-2 bg-slate-50 hover:bg-slate-100 dark:bg-slate-950 dark:hover:bg-slate-850 rounded border border-slate-150 dark:border-slate-800/60 font-medium text-slate-650 dark:text-slate-400 flex items-center justify-between transition-colors group cursor-pointer"
+                      >
+                        <div className="truncate flex-1 pr-2">
+                          <div className="flex items-center gap-1.5">
+                            <p className="font-bold text-slate-800 dark:text-slate-200 truncate">{l.subject}</p>
+                            <span className={`text-[8px] px-1.5 py-0.2 rounded font-bold shrink-0 ${
+                              val.isValid 
+                                ? "bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300" 
+                                : "bg-rose-100 text-rose-800 dark:bg-rose-950 dark:text-rose-300"
+                            }`}>
+                              {val.isValid ? "AKTIF" : "KEDALUWARSA"}
+                            </span>
+                          </div>
+                          <span className="font-mono text-[9px] text-slate-400 block mt-0.5">{l.verificationCode}</span>
                         </div>
-                        <span className="font-mono text-[9px] text-slate-400 block mt-0.5">{l.verificationCode}</span>
-                      </div>
-                      <span className="text-[10px] text-blue-600 dark:text-blue-400 group-hover:translate-x-0.5 transition-transform flex items-center gap-0.5 shrink-0 font-bold">
-                        <span>Uji</span>
-                        <ArrowRight className="h-3 w-3" />
-                      </span>
-                    </button>
-                  );
-                })
-              )}
+                        <span className="text-[10px] text-blue-600 dark:text-blue-400 group-hover:translate-x-0.5 transition-transform flex items-center gap-0.5 shrink-0 font-bold">
+                          <span>Uji</span>
+                          <ArrowRight className="h-3 w-3" />
+                        </span>
+                      </button>
+                    );
+                  })
+                )}
+              </div>
             </div>
-          </div>
+          )}
         </div>
 
         {/* Right column: Verification Result Card */}
@@ -628,7 +630,10 @@ export default function VerificationScanner({
               </div>
               <h3 className="font-bold text-slate-800 dark:text-slate-200 text-sm">Menunggu Scan atau Masukan Kode</h3>
               <p className="text-xs text-slate-400 max-w-sm mt-1.5 leading-relaxed">
-                Silakan nyalakan kamera untuk memindai Barcode QR pada sertifikat, unggah gambar draf, atau gunakan pintasan demo cepat di sebelah kiri untuk menguji autentisitas berkas tanda tangan dinas.
+                {isPublicMode 
+                  ? "Silakan nyalakan kamera untuk memindai QR Code pada fisik dokumen/PDF, unggah gambar sertifikat berkas, atau masukkan kode verifikasi TTE resmi untuk memeriksa autentisitas dan masa berlaku dokumen."
+                  : "Silakan nyalakan kamera untuk memindai Barcode QR pada sertifikat, unggah gambar draf, atau gunakan pintasan demo cepat di sebelah kiri untuk menguji autentisitas berkas tanda tangan dinas."
+                }
               </p>
             </div>
           ) : (

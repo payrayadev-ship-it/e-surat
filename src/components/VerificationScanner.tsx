@@ -1,5 +1,6 @@
 import React, { useEffect, useState, useRef } from "react";
 import { Html5Qrcode } from "html5-qrcode";
+import { jsPDF } from "jspdf";
 import { 
   QrCode, 
   ShieldCheck, 
@@ -14,7 +15,9 @@ import {
   Clock, 
   Sparkles, 
   X,
-  AlertCircle
+  AlertCircle,
+  ExternalLink,
+  Copy
 } from "lucide-react";
 import { LetterOut, LetterIn, CompanySetting } from "../types";
 import { generateVerificationQR } from "../utils";
@@ -263,6 +266,105 @@ export default function VerificationScanner({
     setManualCode("");
     if (activeScanMethod === "camera" && activeCameraId) {
       startCameraScanner(activeCameraId);
+    }
+  };
+
+  const handleDownloadCertificatePDF = (docItem: LetterOut) => {
+    try {
+      const pdf = new jsPDF({ orientation: "portrait", unit: "mm", format: "a4" });
+      
+      // Outer emerald border
+      pdf.setDrawColor(16, 185, 129);
+      pdf.setLineWidth(1.5);
+      pdf.rect(10, 10, 190, 277);
+      
+      pdf.setDrawColor(30, 41, 142);
+      pdf.setLineWidth(0.5);
+      pdf.rect(13, 13, 184, 271);
+
+      // Header / Logo
+      pdf.setTextColor(30, 41, 142);
+      pdf.setFont("helvetica", "bold");
+      pdf.setFontSize(16);
+      pdf.text((companySetting?.companyName || "PT FORESYNDO GLOBAL INDONESIA").toUpperCase(), 105, 28, { align: "center" });
+
+      pdf.setFontSize(8.5);
+      pdf.setFont("helvetica", "normal");
+      pdf.setTextColor(100, 116, 139);
+      pdf.text(companySetting?.companyAddress || "Gedung Cyber, Jl. M.H. Thamrin No. 12, Jakarta Selatan", 105, 34, { align: "center" });
+
+      // Line
+      pdf.setDrawColor(226, 232, 240);
+      pdf.setLineWidth(0.5);
+      pdf.line(25, 40, 185, 40);
+
+      // Badge
+      pdf.setFillColor(240, 253, 244);
+      pdf.setDrawColor(16, 185, 129);
+      pdf.roundedRect(30, 46, 150, 18, 3, 3, "FD");
+
+      pdf.setTextColor(5, 150, 105);
+      pdf.setFont("helvetica", "bold");
+      pdf.setFontSize(13);
+      pdf.text("SERTIFIKAT KEABSAHAN DOKUMEN ELEKTRONIK", 105, 55, { align: "center" });
+      pdf.setFontSize(8.5);
+      pdf.text("DOKUMEN TERVERIFIKASI SAH & RESMI", 105, 60, { align: "center" });
+
+      // Judul Sertifikat
+      pdf.setTextColor(15, 23, 42);
+      pdf.setFont("helvetica", "bold");
+      pdf.setFontSize(12);
+      pdf.text(`JUDUL SERTIFIKAT: ${docItem.subject.toUpperCase()}`, 105, 76, { align: "center" });
+
+      // Table
+      pdf.setFontSize(9.5);
+      let y = 92;
+      const addRow = (label: string, val: string) => {
+        pdf.setFont("helvetica", "bold");
+        pdf.setTextColor(71, 85, 105);
+        pdf.text(label, 30, y);
+        pdf.setFont("helvetica", "normal");
+        pdf.setTextColor(15, 23, 42);
+        pdf.text(`: ${val}`, 82, y);
+        y += 8;
+      };
+
+      addRow("Kode Verifikasi TTE", docItem.verificationCode || "-");
+      addRow("Nomor Surat / Berkas", docItem.letterNumber || "-");
+      addRow("Tanggal Diterbitkan", docItem.letterDate || "-");
+      addRow("Penerima Dokumen", `${docItem.recipient || "-"} (${docItem.recipientInstitution || "-"})`);
+      addRow("Penandatangan Sah", docItem.signatory || "-");
+      addRow("Status Verifikasi", "DOKUMEN TERVERIFIKASI SAH");
+      addRow("Waktu Pengecekan", verificationTime || new Date().toLocaleString("id-ID"));
+
+      // Direct Link Text
+      y += 6;
+      pdf.setFillColor(248, 250, 252);
+      pdf.setDrawColor(203, 213, 225);
+      pdf.roundedRect(28, y, 154, 20, 2, 2, "FD");
+
+      pdf.setFont("helvetica", "bold");
+      pdf.setFontSize(8);
+      pdf.setTextColor(30, 41, 142);
+      pdf.text("TAUTAN SERTIFIKAT RESMI:", 34, y + 6);
+
+      pdf.setFont("courier", "bold");
+      pdf.setFontSize(7.5);
+      pdf.setTextColor(37, 99, 235);
+      const linkText = `${window.location.origin}${window.location.pathname}?verify=${encodeURIComponent(docItem.verificationCode)}`;
+      pdf.text(linkText, 34, y + 13);
+
+      // Footer Notes
+      pdf.setFont("helvetica", "normal");
+      pdf.setFontSize(7.5);
+      pdf.setTextColor(100, 116, 139);
+      pdf.text("Sertifikat ini diterbitkan secara otomatis oleh Sistem e-Office PT Foresyndo Global Indonesia", 105, 260, { align: "center" });
+      pdf.text("sebagai bukti keabsahan dokumen elektronik berisikan TTE resmi tanpa perlu login ke dalam aplikasi.", 105, 265, { align: "center" });
+
+      pdf.save(`Sertifikat_Sah_${docItem.verificationCode}.pdf`);
+    } catch (err) {
+      console.error("Gagal membuat PDF Sertifikat:", err);
+      alert("Gagal mengunduh file sertifikat.");
     }
   };
 
@@ -525,6 +627,59 @@ export default function VerificationScanner({
                     {/* Watermark Logo background */}
                     <div className="absolute inset-0 flex items-center justify-center opacity-[0.02] pointer-events-none select-none">
                       <div className="text-[120px] font-black tracking-widest font-mono">FGI</div>
+                    </div>
+
+                    {/* Dedicated Link Sertifikat Sah Card (Matches Judul Sertifikat) */}
+                    <div className="bg-emerald-50/90 dark:bg-emerald-950/40 border-2 border-emerald-500/50 rounded-2xl p-4.5 space-y-3 shadow-sm">
+                      <div className="flex items-center justify-between">
+                        <span className="text-[11px] font-extrabold text-emerald-800 dark:text-emerald-300 uppercase tracking-wider flex items-center gap-1.5">
+                          <ShieldCheck className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />
+                          <span>TAUTAN / LINK SERTIFIKAT SAH</span>
+                        </span>
+                        <span className="text-[10px] font-mono bg-emerald-100 dark:bg-emerald-900/80 text-emerald-800 dark:text-emerald-200 px-2.5 py-0.5 rounded-full font-bold">
+                          DOKUMEN TERVERIFIKASI
+                        </span>
+                      </div>
+
+                      <div className="bg-white dark:bg-slate-900 border border-emerald-200 dark:border-emerald-800/80 p-3.5 rounded-xl space-y-1.5">
+                        <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wide block">
+                          Judul Sertifikat Sah
+                        </span>
+                        <a 
+                          href={`${window.location.origin}${window.location.pathname}?verify=${encodeURIComponent(resolvedDoc.verificationCode)}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-sm md:text-base font-extrabold text-blue-600 dark:text-blue-400 hover:underline flex items-center gap-1.5 leading-snug group"
+                        >
+                          <span className="break-words">Sertifikat Sah: {resolvedDoc.subject}</span>
+                          <ExternalLink className="h-4 w-4 shrink-0 group-hover:translate-x-0.5 transition-transform" />
+                        </a>
+                        <p className="text-[10px] font-mono text-slate-400 truncate pt-1 border-t border-slate-100 dark:border-slate-800">
+                          URL Direct: {window.location.origin}{window.location.pathname}?verify={resolvedDoc.verificationCode}
+                        </p>
+                      </div>
+
+                      <div className="flex flex-wrap items-center gap-2 pt-1">
+                        <button
+                          onClick={() => handleDownloadCertificatePDF(resolvedDoc)}
+                          className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs py-2 px-4 rounded-xl cursor-pointer transition-all shadow-sm flex items-center gap-2 active:scale-95"
+                        >
+                          <Download className="h-4 w-4" />
+                          <span>Unduh Sertifikat PDF: {resolvedDoc.subject}</span>
+                        </button>
+
+                        <button
+                          onClick={() => {
+                            const link = `${window.location.origin}${window.location.pathname}?verify=${encodeURIComponent(resolvedDoc.verificationCode)}`;
+                            navigator.clipboard.writeText(link);
+                            alert(`Tautan sertifikat "${resolvedDoc.subject}" berhasil disalin!`);
+                          }}
+                          className="bg-white dark:bg-slate-950 text-slate-700 dark:text-slate-300 border border-slate-250 dark:border-slate-800 font-semibold text-xs py-2 px-3.5 rounded-xl hover:bg-slate-50 dark:hover:bg-slate-900 transition-colors flex items-center gap-1.5 cursor-pointer"
+                        >
+                          <Copy className="h-3.5 w-3.5 text-emerald-500" />
+                          <span>Salin Link Sertifikat</span>
+                        </button>
+                      </div>
                     </div>
 
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs md:text-sm">

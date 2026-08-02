@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { 
   Building2, LayoutDashboard, Mail, Send, MessageSquare, Archive, Settings, QrCode,
-  LogOut, Sun, Moon, Sparkles, User, ShieldAlert, CheckCircle, Bell, RefreshCw, Plus,
+  LogOut, Sun, Moon, Sparkles, User, ShieldAlert, ShieldCheck, CheckCircle, Bell, RefreshCw, Plus,
   Search, X, ExternalLink, FileDown, Calendar, Tag, Hash, Paperclip, ChevronRight, CornerDownRight, CheckCircle2, AlertTriangle, Menu,
   Link, Check, Copy, Share2
 } from "lucide-react";
@@ -110,6 +110,7 @@ export default function App() {
   const [isSidebarOpen, setIsSidebarOpen] = useState<boolean>(false);
   const [isBottomMenuOpen, setIsBottomMenuOpen] = useState<boolean>(false);
   const [initialVerifyCode, setInitialVerifyCode] = useState<string | null>(null);
+  const [isPublicVerify, setIsPublicVerify] = useState<boolean>(false);
 
   // Global Search & Share states
   const [searchQuery, setSearchQuery] = useState("");
@@ -632,10 +633,7 @@ export default function App() {
       if (verifyCode) {
         setInitialVerifyCode(verifyCode);
         setActiveTab("verification_scanner");
-        
-        // Quietly erase verification code from browser address bar
-        const newUrl = window.location.pathname;
-        window.history.replaceState({}, document.title, newUrl);
+        setIsPublicVerify(true);
       }
     }
   }, []);
@@ -1278,8 +1276,56 @@ Sistem Otomatis e-Office FORSDIG`;
     }
   };
 
-  // If NOT Logged In, render corporate entry portal (Login + Selector)
+  // If NOT Logged In, check if public verification portal is requested
   if (!currentUser) {
+    if (isPublicVerify || initialVerifyCode) {
+      return (
+        <div className="min-h-screen bg-slate-100 dark:bg-slate-950 text-slate-900 dark:text-slate-100 p-4 md:p-8">
+          <div className="max-w-5xl mx-auto space-y-6">
+            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center bg-white dark:bg-slate-900 p-5 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm gap-4">
+              <div className="flex items-center space-x-3">
+                {companySetting.companyLogo ? (
+                  <img src={companySetting.companyLogo} alt="Logo" className="h-10 object-contain" referrerPolicy="no-referrer" />
+                ) : (
+                  <FgiLogo size={36} />
+                )}
+                <div>
+                  <h1 className="font-extrabold text-base md:text-lg text-slate-900 dark:text-white">
+                    Portal Verifikasi Sertifikat & Dokumen Publik
+                  </h1>
+                  <p className="text-xs text-slate-500 dark:text-slate-400">
+                    PT Foresyndo Global Indonesia - Akses Pemindaian Tanpa Login
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={() => {
+                  setIsPublicVerify(false);
+                  setInitialVerifyCode(null);
+                }}
+                className="bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs py-2 px-4 rounded-xl cursor-pointer transition-all shadow-sm"
+              >
+                Masuk ke Aplikasi
+              </button>
+            </div>
+
+            <VerificationScanner
+              lettersOut={lettersOut}
+              lettersIn={lettersIn}
+              companySetting={companySetting}
+              onNavigate={(tab) => {
+                if (tab !== "verification_scanner") {
+                  setIsPublicVerify(false);
+                  setInitialVerifyCode(null);
+                }
+              }}
+              initialVerifyCode={initialVerifyCode}
+            />
+          </div>
+        </div>
+      );
+    }
+
     return (
       <div className="relative min-h-screen bg-slate-100 dark:bg-slate-950 flex flex-col md:flex-row justify-center items-center p-4">
         {/* Decorative ambient vector glows */}
@@ -1310,6 +1356,17 @@ Sistem Otomatis e-Office FORSDIG`;
             <div className="flex items-center space-x-2 text-xs font-semibold text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-950/40 p-3 rounded-lg border border-blue-100 w-fit">
               <Sparkles className="h-4 w-4 animate-pulse shrink-0" />
               <span>Didukung Asisten Penyusun Surat Gemini AI</span>
+            </div>
+
+            {/* Public Verification Shortcut */}
+            <div className="pt-2">
+              <button
+                onClick={() => setIsPublicVerify(true)}
+                className="w-full sm:w-auto bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs py-2.5 px-4 rounded-xl transition-colors shadow-sm flex items-center justify-center gap-2 cursor-pointer"
+              >
+                <ShieldCheck className="h-4 w-4" />
+                <span>Verifikasi Sertifikat / Dokumen (Tanpa Login)</span>
+              </button>
             </div>
           </div>
 

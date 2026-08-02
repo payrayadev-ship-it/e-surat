@@ -851,9 +851,9 @@ export default function AIKontrak({ currentRole, currentUser }: AIKontrakProps) 
                 <div className="w-full max-w-md bg-slate-50 dark:bg-slate-950 border border-slate-150 dark:border-slate-850 rounded-xl p-4 text-left font-mono text-[10px] space-y-1 text-slate-500">
                   <div className="flex items-center space-x-1.5 text-blue-600 dark:text-blue-400 font-bold">
                     <span>●</span>
-                    <span>AI_STUDIO_COGNITIVE_ENGINE_ON</span>
+                    <span>FORESYNDO_COGNITIVE_ENGINE_ON</span>
                   </div>
-                  <div className="text-slate-400">Analyst: FORSDIG Legal Sandbox Agent v2.5</div>
+                  <div className="text-slate-400">Analyst: FORESYNDO Legal Agent v2.5</div>
                   <div className="text-slate-400">Category: {contractType.toUpperCase()} | Action: {actionMode.toUpperCase()}</div>
                   <div className="border-t border-slate-200 dark:border-slate-800/80 my-2"></div>
                   <div className="text-slate-700 dark:text-slate-350 font-semibold animate-pulse flex items-center space-x-1">

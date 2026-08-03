@@ -40,6 +40,7 @@ export interface LetterOut {
   recipient: string;
   recipientInstitution: string;
   recipientEmail?: string; // Target email for official dispatch
+  recipientCcEmail?: string; // Target CC email for official copy dispatch
   subject: string;
   content: string;
   category?: string; // e.g. "Undangan", "Penawaran", "Tugas", "Keputusan", "Pemberitahuan", "Lainnya"

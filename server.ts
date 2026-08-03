@@ -576,7 +576,7 @@ Harap pastikan output Anda mematuhi skema JSON di atas dengan sempurna. Jangan m
 
   // E-mail Outgoing Logs Handler / Resend Dispatch Route
   app.post("/api/email/send", async (req, res) => {
-    const { to, subject, body, attachmentName, pdfData, pdfBase64, attachmentData, letterData } = req.body;
+    const { to, cc, subject, body, attachmentName, pdfData, pdfBase64, attachmentData, letterData } = req.body;
     if (!to || !subject) {
       return res.status(400).json({ error: "Recipient and subject are required" });
     }
@@ -738,6 +738,16 @@ Harap pastikan output Anda mematuhi skema JSON di atas dengan sempurna. Jangan m
         <h2 class="subject-title">${subject}</h2>
         <div class="text-body">${body}</div>
         
+        <!-- Automated Email Notice Box -->
+        <div style="margin-top: 20px; padding: 14px 18px; background-color: #fefce8; border-left: 4px solid #eab308; border-radius: 6px; font-family: sans-serif;">
+          <div style="font-size: 12px; color: #854d0e; font-weight: bold; margin-bottom: 4px;">
+            ⚠️ Catatan Penting / Automatic Notice:
+          </div>
+          <div style="font-size: 12px; color: #713f12; line-height: 1.5;">
+            Jangan membalas email ini karena email ini dibuat secara otomatis. Jika Anda ingin membalas email, silakan kirimkan balasan Anda ke: <a href="mailto:cs.fgi@zohomail.com" style="color: #1e3a8a; font-weight: bold; text-decoration: underline;">cs.fgi@zohomail.com</a>.
+          </div>
+        </div>
+        
         ${letterData ? `
         <div class="metadata-box">
           <div class="metadata-title">Sertifikasi & Kredensial TTE</div>
@@ -788,7 +798,7 @@ Harap pastikan output Anda mematuhi skema JSON di atas dengan sempurna. Jangan m
         <p class="footer-text">
           Pemberitahuan resmi ini dikirimkan secara otomatis oleh modul FGI Office Analytics Hub.<br>
           Gedung FGI Hub, Lt. 12, Jakarta Selatan, DKI Jakarta.<br>
-          <em>Harap tidak membalas email ini secara langsung karena transmisi ini berjalan di bawah protokol otomatis.</em>
+          <em>Jangan membalas email ini karena email ini dibuat secara otomatis. Jika ingin membalas email silakan kirim ke <strong>cs.fgi@zohomail.com</strong></em>
         </p>
       </div>
     </div>
@@ -812,13 +822,18 @@ Harap pastikan output Anda mematuhi skema JSON di atas dengan sempurna. Jangan m
           });
         }
 
-        const response = await resend.emails.send({
+        const resendPayload: any = {
           from: "FGI Office <noreply@foresyndoglobalindonesia.my.id>",
           to: to,
           subject: subject,
           html: emailHtmlContent,
           attachments: attachments,
-        });
+        };
+        if (cc) {
+          resendPayload.cc = cc;
+        }
+
+        const response = await resend.emails.send(resendPayload);
 
         console.log("[RESEND ENGINE] Dispatch success response data:", response);
 

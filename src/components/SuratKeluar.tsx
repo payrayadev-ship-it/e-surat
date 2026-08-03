@@ -175,6 +175,7 @@ export default function SuratKeluar({
   const [recipientName, setRecipientName] = useState("");
   const [recipientInst, setRecipientInst] = useState("");
   const [recipientEmail, setRecipientEmail] = useState("");
+  const [recipientCcEmail, setRecipientCcEmail] = useState("");
   const [subjectVal, setSubjectVal] = useState("");
   const [contentVal, setContentVal] = useState("");
   const [signatoryName, setSignatoryName] = useState("Ir. Joko Sutrisno, M.T.");
@@ -489,6 +490,9 @@ export default function SuratKeluar({
     if (recipientEmail) {
       newLetterData.recipientEmail = recipientEmail;
     }
+    if (recipientCcEmail) {
+      newLetterData.recipientCcEmail = recipientCcEmail;
+    }
 
     if (sigType !== "QR" && sigDataUrl !== "") {
       newLetterData.signatureUrl = sigDataUrl;
@@ -500,6 +504,7 @@ export default function SuratKeluar({
     setRecipientName("");
     setRecipientInst("");
     setRecipientEmail("");
+    setRecipientCcEmail("");
     setSubjectVal("");
     setContentVal("");
     setSelectedTpl("");
@@ -1291,6 +1296,7 @@ export default function SuratKeluar({
                             headers: { "Content-Type": "application/json" },
                             body: JSON.stringify({
                               to: selectedLetter.recipientEmail || companySetting.companyEmail,
+                              cc: selectedLetter.recipientCcEmail || undefined,
                               subject: `[FGI OFFICE] - ${selectedLetter.subject}`,
                               body: selectedLetter.content,
                               attachmentName: finalAttachmentName,
@@ -1308,12 +1314,13 @@ export default function SuratKeluar({
                           }).then(res => res.json()).then(resp => {
                             if (resp.success) {
                               const targetEmail = selectedLetter.recipientEmail || companySetting.companyEmail;
+                              const ccNote = selectedLetter.recipientCcEmail ? ` (CC: ${selectedLetter.recipientCcEmail})` : "";
                               const isSimulation = resp.deliveryMethod && resp.deliveryMethod.includes("SIMULATION");
                               
                               if (isSimulation) {
-                                alert(`[Mode Simulasi] Email surat keluar "${selectedLetter.subject}" disimulasikan siap kirim ke ${targetEmail}.\n\n(Tip: Isi 'RESEND_API_KEY' di secrets untuk pengiriman nyata!)`);
+                                alert(`[Mode Simulasi] Email surat keluar "${selectedLetter.subject}" disimulasikan siap kirim ke ${targetEmail}${ccNote}.\n\n(Tip: Isi 'RESEND_API_KEY' di secrets untuk pengiriman nyata!)`);
                               } else {
-                                alert(`[Resend Sukses] Surat resmi "${selectedLetter.subject}" berhasil dikirimkan ke alamat ${targetEmail} menggunakan provider Resend!`);
+                                alert(`[Resend Sukses] Surat resmi "${selectedLetter.subject}" berhasil dikirimkan ke alamat ${targetEmail}${ccNote} menggunakan provider Resend!`);
                               }
                             } else {
                               alert(`Gagal mengirim email: ${resp.error || 'Server error'}`);
@@ -1764,12 +1771,23 @@ export default function SuratKeluar({
                 </div>
 
                 <div>
-                  <label className="block text-slate-500 font-semibold mb-1">Email Penerima (Untuk Kirim Resend)</label>
+                  <label className="block text-slate-500 font-semibold mb-1">Email Utama Penerima (Untuk Kirim Resend)</label>
                   <input 
                     type="email" 
                     placeholder="Contoh: penerima@instansi.com"
                     value={recipientEmail}
                     onChange={(e) => setRecipientEmail(e.target.value)}
+                    className="w-full p-2 border border-slate-200 dark:border-slate-800 rounded bg-slate-50 dark:bg-slate-950 text-slate-800 dark:text-slate-100"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-slate-500 font-semibold mb-1">Email CC / Tembusan (Opsional)</label>
+                  <input 
+                    type="email" 
+                    placeholder="Contoh: cc.pimpinan@instansi.com"
+                    value={recipientCcEmail}
+                    onChange={(e) => setRecipientCcEmail(e.target.value)}
                     className="w-full p-2 border border-slate-200 dark:border-slate-800 rounded bg-slate-50 dark:bg-slate-950 text-slate-800 dark:text-slate-100"
                   />
                 </div>
@@ -2167,6 +2185,12 @@ export default function SuratKeluar({
                     <span className="col-span-2 text-slate-800 dark:text-slate-200">
                       <p className="font-bold">{selectedLetter.recipient}</p>
                       <p className="text-[11px] text-slate-500 dark:text-slate-400">{selectedLetter.recipientInstitution}</p>
+                      {selectedLetter.recipientEmail && (
+                        <p className="text-[11px] text-blue-600 dark:text-blue-400 font-mono mt-0.5">Email: {selectedLetter.recipientEmail}</p>
+                      )}
+                      {selectedLetter.recipientCcEmail && (
+                        <p className="text-[11px] text-indigo-600 dark:text-indigo-400 font-mono mt-0.5">CC Email: {selectedLetter.recipientCcEmail}</p>
+                      )}
                     </span>
                   </div>
                   <div className="p-3 grid grid-cols-3 gap-2">
@@ -2334,6 +2358,14 @@ export default function SuratKeluar({
                       {selectedLetter.recipientEmail || companySetting.companyEmail}
                     </span>
                   </div>
+                  {selectedLetter.recipientCcEmail && (
+                    <div className="flex items-center">
+                      <span className="w-16 font-bold text-slate-400 text-left">Tembusan (CC):</span>
+                      <span className="px-2 py-0.5 bg-indigo-50 dark:bg-indigo-950 text-indigo-700 dark:text-indigo-300 rounded font-semibold font-mono text-[11px] border border-indigo-100 dark:border-indigo-900/30">
+                        {selectedLetter.recipientCcEmail}
+                      </span>
+                    </div>
+                  )}
                   <div className="flex items-center">
                     <span className="w-16 font-bold text-slate-400 text-left">Subjek:</span>
                     <span className="font-bold text-slate-900 dark:text-slate-100">
@@ -2365,6 +2397,17 @@ export default function SuratKeluar({
                     className="text-xs md:text-sm text-slate-700 leading-relaxed antialiased rich-text-preview"
                     dangerouslySetInnerHTML={{ __html: getSubstitutedContent(selectedLetter.content) }}
                   />
+
+                  {/* Automated Reply Disclaimer Box */}
+                  <div className="p-3 bg-amber-50/90 border-l-4 border-amber-500 rounded-r-lg text-xs text-amber-900 leading-relaxed space-y-1">
+                    <p className="font-bold flex items-center gap-1.5 text-amber-950">
+                      <AlertTriangle className="h-4 w-4 text-amber-600 shrink-0" />
+                      <span>Catatan Penting / Automatic Notice</span>
+                    </p>
+                    <p>
+                      Jangan membalas email ini karena email ini dibuat secara otomatis. Jika Anda ingin membalas email, silakan kirim ke <a href="mailto:cs.fgi@zohomail.com" className="font-bold text-blue-900 underline">cs.fgi@zohomail.com</a>.
+                    </p>
+                  </div>
 
                   {/* Attachment indicator block with PDF Modal Trigger */}
                   <div className="p-3.5 bg-slate-50 border border-slate-200 rounded-xl flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs">
@@ -2439,11 +2482,11 @@ export default function SuratKeluar({
                 </div>
 
                 {/* Resend Footer Area */}
-                <div className="bg-slate-50 p-6 border-t border-slate-200 text-center text-[10px] text-slate-505 leading-normal">
+                <div className="bg-slate-50 p-6 border-t border-slate-200 text-center text-[10px] text-slate-500 leading-normal">
                   <p>
                     Pemberitahuan resmi ini dikirimkan secara otomatis oleh modul FGI Office Analytics Hub.<br />
                     Gedung FGI Hub, Lt. 12, Jakarta Selatan, DKI Jakarta.<br />
-                    <em>Harap tidak membalas email ini secara langsung karena transmisi ini berjalan di bawah protokol otomatis.</em>
+                    <em>Jangan membalas email ini karena email ini dibuat secara otomatis. Jika ingin membalas email silakan kirim ke <strong>cs.fgi@zohomail.com</strong></em>
                   </p>
                 </div>
 

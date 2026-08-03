@@ -162,18 +162,34 @@ export async function downloadVerificationQRPNG(
 
 /**
  * Automates corporate registration numbers.
- * Format e.g., SPD/2026/06/0001
+ * Format e.g., FORESYNDO/UND/2026/08/0001
  */
-export function generateLetterNumber(index: number, setting: CompanySetting, category?: string): string {
-  const date = new Date();
+export function generateLetterNumber(
+  index: number, 
+  setting?: CompanySetting, 
+  category?: string,
+  targetDate?: Date | string | null
+): string {
+  let date = new Date();
+  if (targetDate) {
+    const parsed = new Date(targetDate);
+    if (!isNaN(parsed.getTime())) {
+      date = parsed;
+    }
+  }
   const year = date.getFullYear();
-  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const monthNum = date.getMonth() + 1;
+  const month = String(monthNum).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
   const sequential = String(index + 1).padStart(4, "0");
 
-  let prefix = "FORSDIG"; // default company fallback
-  if (setting.companyName && setting.companyName.includes("FORSDIG")) {
-    prefix = "FORSDIG";
-  } else if (setting.companyName) {
+  const romanMonths = ["I", "II", "III", "IV", "V", "VI", "VII", "VIII", "IX", "X", "XI", "XII"];
+  const romanMonth = romanMonths[date.getMonth()] || month;
+
+  let prefix = "FORESYNDO"; // default company fallback
+  if (setting?.companyName && (setting.companyName.includes("FORESYNDO") || setting.companyName.includes("FORSDIG"))) {
+    prefix = setting.companyName.includes("FORESYNDO") ? "FORESYNDO" : "FORSDIG";
+  } else if (setting?.companyName) {
     const words = setting.companyName.replace(/^(PT|CV)\s+/i, "").split(/\s+/);
     if (words.length > 0) {
       prefix = words.map(w => w[0]).join("").toUpperCase();
@@ -199,22 +215,19 @@ export function generateLetterNumber(index: number, setting: CompanySetting, cat
     subCode = "MEMO";
   }
 
-  // Standard Indonesian style format: PREFIX/SUBCODE/YYYY/MM/[SEQ]
-  // e.g., FORSDIG/UND/2026/06/0001
-  let format = setting.letterNumberFormat || "PREFIX/SUBCODE/YYYY/MM/[SEQ]";
-  
-  if (format.includes("FORSDIG") || format.includes("SPD") || format.includes("PREFIX")) {
-    format = format
-      .replace("FORSDIG", `FORSDIG/${subCode}`)
-      .replace("SPD", `SPD/${subCode}`)
-      .replace("PREFIX", `${prefix}/${subCode}`);
-  } else {
-    format = `${prefix}/${subCode}/${format}`;
-  }
+  // Standard Indonesian style format fallback: PREFIX/SUBCODE/YYYY/MM/[SEQ]
+  // e.g., FORESYNDO/UND/2026/08/0001
+  let format = setting?.letterNumberFormat?.trim() || "PREFIX/SUBCODE/YYYY/MM/[SEQ]";
 
+  // Clean token replacements
   return format
+    .replace("SUBCODE", subCode)
+    .replace("PREFIX", prefix)
     .replace("YYYY", String(year))
+    .replace("YY", String(year).slice(-2))
+    .replace("ROMAN_MM", romanMonth)
     .replace("MM", month)
+    .replace("DD", day)
     .replace("[SEQ]", sequential);
 }
 

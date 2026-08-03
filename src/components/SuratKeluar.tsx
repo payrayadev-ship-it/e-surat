@@ -180,6 +180,8 @@ export default function SuratKeluar({
   const [signatoryName, setSignatoryName] = useState("Ir. Joko Sutrisno, M.T.");
   const [selectedTpl, setSelectedTpl] = useState("");
   const [letterCategory, setLetterCategory] = useState("Undangan");
+  const [letterDateVal, setLetterDateVal] = useState<string>(new Date().toISOString().split("T")[0]);
+  const [cityVal, setCityVal] = useState<string>(companySetting?.city || "Jakarta");
   const [validityPeriod, setValidityPeriod] = useState<"1_YEAR" | "6_MONTHS" | "2_YEARS" | "PERMANEN" | "CUSTOM">("1_YEAR");
   const [customValidDate, setCustomValidDate] = useState("");
 
@@ -442,11 +444,12 @@ export default function SuratKeluar({
 
     // Automatic sequence generation code
     const indexSeq = letters.length;
-    const letterNoAuto = generateLetterNumber(indexSeq, companySetting, letterCategory);
+    const issueDate = letterDateVal || new Date().toISOString().split("T")[0];
+    const letterNoAuto = generateLetterNumber(indexSeq, companySetting, letterCategory, issueDate);
     const verificationCode = `DOC-${new Date().toISOString().replace(/[-:T]/g, "").substring(0, 8)}-${String(indexSeq + 1).padStart(3, "0")}`;
 
     let validUntilVal = "PERMANEN";
-    const today = new Date();
+    const today = new Date(issueDate);
     if (validityPeriod === "6_MONTHS") {
       const d = new Date(today);
       d.setMonth(d.getMonth() + 6);
@@ -467,7 +470,8 @@ export default function SuratKeluar({
 
     const newLetterData: Omit<LetterOut, "id" | "createdAt"> = {
       letterNumber: letterNoAuto,
-      letterDate: new Date().toISOString().split("T")[0],
+      letterDate: issueDate,
+      city: cityVal.trim() || companySetting?.city || "Jakarta",
       recipient: recipientName,
       recipientInstitution: recipientInst || "PT Umum / Klien Resmi",
       subject: subjectVal || "Surat Resmi Korespondensi",
@@ -500,6 +504,8 @@ export default function SuratKeluar({
     setContentVal("");
     setSelectedTpl("");
     setLetterCategory("Undangan");
+    setLetterDateVal(new Date().toISOString().split("T")[0]);
+    setCityVal(companySetting?.city || "Jakarta");
     setSigDataUrl("");
     setSigType("Canvas");
     setIsAddOpen(false);
@@ -646,7 +652,8 @@ export default function SuratKeluar({
     doc.setTextColor(15, 23, 42); // Dark Charcoal
     doc.setFont("helvetica", "normal");
     doc.setFontSize(10);
-    const dateOutput = `Jakarta, ${letter.letterDate ? formatDateIndo(letter.letterDate) : getCurrentFormattedDate()}`;
+    const letterCity = letter.city || companySetting?.city || "Jakarta";
+    const dateOutput = `${letterCity}, ${letter.letterDate ? formatDateIndo(letter.letterDate) : getCurrentFormattedDate()}`;
     doc.text(dateOutput, rightMargin, metaY, { align: "right" });
 
     // Draw visual document validity badge on top-right of PDF
@@ -1501,7 +1508,7 @@ export default function SuratKeluar({
                     <p>Hal    : <span className="font-semibold">{selectedLetter.subject}</span></p>
                   </div>
                   <div>
-                    <p>Jakarta, {getCurrentFormattedDate()}</p>
+                    <p>{selectedLetter.city || companySetting?.city || "Jakarta"}, {selectedLetter.letterDate ? formatDateIndo(selectedLetter.letterDate) : getCurrentFormattedDate()}</p>
                   </div>
                 </div>
 
@@ -1656,8 +1663,8 @@ export default function SuratKeluar({
                 </div>
               </div>
 
-              {/* Master Template & Category Dropdown fields */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {/* Master Template, Category, Issue Date & City fields */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
                 <div>
                   <label className="block text-slate-500 font-semibold mb-1">Kategori / Jenis Surat</label>
                   <select 
@@ -1674,6 +1681,29 @@ export default function SuratKeluar({
                     <option value="Pengumuman">Surat Pengumuman (PGM)</option>
                     <option value="Lainnya">Korespondensi Umum (KOR)</option>
                   </select>
+                </div>
+
+                <div>
+                  <label className="block text-slate-500 font-semibold mb-1">Tanggal Surat Dikeluarkan</label>
+                  <input 
+                    type="date" 
+                    required
+                    value={letterDateVal}
+                    onChange={(e) => setLetterDateVal(e.target.value)}
+                    className="w-full p-2 border border-slate-200 dark:border-slate-800 rounded bg-slate-50 dark:bg-slate-950 text-slate-800 dark:text-slate-100 font-mono text-xs font-semibold"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-slate-500 font-semibold mb-1">Kota Pembuatan Surat</label>
+                  <input 
+                    type="text" 
+                    required
+                    value={cityVal}
+                    onChange={(e) => setCityVal(e.target.value)}
+                    placeholder="e.g. Jakarta, Bandung, Surabaya"
+                    className="w-full p-2 border border-slate-200 dark:border-slate-800 rounded bg-slate-50 dark:bg-slate-950 text-slate-800 dark:text-slate-100 font-sans text-xs font-semibold"
+                  />
                 </div>
 
                 <div>
@@ -1694,15 +1724,15 @@ export default function SuratKeluar({
               {/* Dynamic live letter number preview */}
               <div className="bg-slate-50 dark:bg-slate-950/60 border border-slate-150 dark:border-slate-850 p-3.5 rounded-xl flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
                 <div>
-                  <span className="text-[10px] font-bold text-blue-600 dark:text-blue-400 uppercase tracking-widest block">Format Nomor Surat Otomatis Live:</span>
+                  <span className="text-[10px] font-bold text-blue-600 dark:text-blue-400 uppercase tracking-widest block">Format Nomor Surat Otomatis Live (Sesuai Tanggal & Bulan):</span>
                   <span className="font-mono text-xs sm:text-sm font-bold text-slate-800 dark:text-slate-100 mt-1 block">
-                    {generateLetterNumber(letters.length, companySetting, letterCategory)}
+                    {generateLetterNumber(letters.length, companySetting, letterCategory, letterDateVal)}
                   </span>
                 </div>
                 <div className="shrink-0 flex items-center space-x-1.5 self-start sm:self-center">
                   <span className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
                   <span className="text-[10px] font-bold uppercase py-0.5 px-2 bg-blue-50/50 dark:bg-blue-950/40 text-blue-700 dark:text-blue-300 rounded border border-blue-100 dark:border-blue-900/40">
-                    Kategori: {letterCategory}
+                    {letterDateVal ? new Date(letterDateVal).toLocaleDateString("id-ID", { month: "long", year: "numeric" }) : "Live Date"}
                   </span>
                 </div>
               </div>
@@ -2617,7 +2647,7 @@ export default function SuratKeluar({
                         <span className="text-slate-900 font-bold mt-1 text-wrap break-words">{selectedLetter.subject}</span>
                       </div>
                       <div className="shrink-0 text-right text-slate-800 font-medium space-y-1.5">
-                        <p>Jakarta, {selectedLetter.letterDate ? formatDateIndo(selectedLetter.letterDate) : getCurrentFormattedDate()}</p>
+                        <p>{selectedLetter.city || companySetting?.city || "Jakarta"}, {selectedLetter.letterDate ? formatDateIndo(selectedLetter.letterDate) : getCurrentFormattedDate()}</p>
                         {(() => {
                           const valInfo = getDocumentValidityStatus(selectedLetter.letterDate, selectedLetter.validUntil);
                           return (

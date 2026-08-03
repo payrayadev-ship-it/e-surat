@@ -157,6 +157,7 @@ export default function SettingsAudit({
   // Form states - Company metadata
   const [companyName, setCompanyName] = useState(companySetting.companyName);
   const [companyAddress, setCompanyAddress] = useState(companySetting.companyAddress);
+  const [companyCity, setCompanyCity] = useState(companySetting.city || "Jakarta");
   const [companyPhone, setCompanyPhone] = useState(companySetting.companyPhone);
   const [companyEmail, setCompanyEmail] = useState(companySetting.companyEmail);
   const [numberFormat, setNumberFormat] = useState(companySetting.letterNumberFormat);
@@ -320,6 +321,7 @@ export default function SettingsAudit({
       ...companySetting,
       companyName,
       companyAddress,
+      city: companyCity,
       companyPhone,
       companyEmail,
       letterNumberFormat: numberFormat,
@@ -583,6 +585,18 @@ export default function SettingsAudit({
                   required
                   value={companyPhone}
                   onChange={(e) => setCompanyPhone(e.target.value)}
+                  className="w-full p-2 border border-slate-200 dark:border-slate-800 rounded bg-slate-50 dark:bg-slate-950 text-slate-800 dark:text-slate-100"
+                />
+              </div>
+
+              <div>
+                <label className="block text-slate-500 font-semibold mb-1">Kota Pembuatan Surat (Default)</label>
+                <input 
+                  type="text" 
+                  required
+                  value={companyCity}
+                  onChange={(e) => setCompanyCity(e.target.value)}
+                  placeholder="e.g. Jakarta, Bandung, Surabaya"
                   className="w-full p-2 border border-slate-200 dark:border-slate-800 rounded bg-slate-50 dark:bg-slate-950 text-slate-800 dark:text-slate-100"
                 />
               </div>

@@ -455,7 +455,8 @@ export default function App() {
       doc.setTextColor(15, 23, 42); // Dark Charcoal
       doc.setFont("helvetica", "normal");
       doc.setFontSize(10);
-      const dateOutput = `Jakarta, ${letter.letterDate ? formatIndoDateGlobal(letter.letterDate) : formatIndoDateGlobal(new Date().toISOString())}`;
+      const letterCity = letter.city || companySetting.city || "Jakarta";
+      const dateOutput = `${letterCity}, ${letter.letterDate ? formatIndoDateGlobal(letter.letterDate) : formatIndoDateGlobal(new Date().toISOString())}`;
       doc.text(dateOutput, 190, metaY, { align: "right" });
 
       doc.setFont("helvetica", "bold");

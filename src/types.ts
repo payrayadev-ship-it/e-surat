@@ -36,6 +36,7 @@ export interface LetterOut {
   id: string;
   letterNumber: string;
   letterDate: string;
+  city?: string; // Kota pembuatan/penerbitan surat, default: "Jakarta"
   recipient: string;
   recipientInstitution: string;
   recipientEmail?: string; // Target email for official dispatch
@@ -112,6 +113,7 @@ export interface CompanySetting {
   id: string;
   companyName: string;
   companyAddress: string;
+  city?: string; // Kota domisili / pembuatan surat default
   companyEmail: string;
   companyPhone: string;
   letterNumberFormat: string; // e.g., SPD/YYYY/MM/[SEQ]
